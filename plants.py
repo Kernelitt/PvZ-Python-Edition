@@ -4,9 +4,10 @@ import math
 import random
 from definitions import *
 from zombie_animations import *
+from preloader import preloaded_images
 
 class Projectile:
-    def __init__(self, x, y, speed, damage, image, angle=0):
+    def __init__(self, x, y, speed, damage, image, angle=0, proj_type='pea'):
         self.x = x
         self.y = y
         self.speed = speed  # pixels per second
@@ -15,6 +16,7 @@ class Projectile:
         self.angle = angle  # in radians, 0 is right
         self.rect = self.image.get_rect(center=(self.x, self.y))
         self.active = True
+        self.proj_type = proj_type
 
     def update(self, dt):
         self.x += self.speed * dt * math.cos(self.angle)
@@ -68,11 +70,10 @@ class Peashooter(Plant):
         # Load projectile image
         self.projectile_image = pygame.image.load(PROJECTILE_TEXTURES_PATH["Pea"]).convert_alpha()
 
-        # Load animation frames
+        # Use preloaded animation frames
         self.animation_frames = {}
         for action in PEASHOOTER_ANIMATIONS:
-            frames = get_animation_frames(action, 'peashooter')
-            self.animation_frames[action] = [pygame.image.load(f'animations/peashooter/Peashooter{f:04d}.png') for f in frames]
+            self.animation_frames[action] = preloaded_images[f'peashooter_{action}']
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -94,7 +95,7 @@ class Peashooter(Plant):
                 self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
         # Check if there is a zombie in the same lane ahead
-        has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x)
+        has_target = any(z for z in self.game.main_game.zombies if z.lane == self.row and z.x > self.x)
         if has_target:
             if self.shoot_delay == 0.0:
                 self.shoot_delay = random.uniform(1.0, 1.5)
@@ -180,11 +181,10 @@ class Sunflower(Plant):
         self.sun_timer = 0.0
         self.suns = []  # List to hold spawned suns
 
-        # Load animation frames
+        # Use preloaded animation frames
         self.animation_frames = {}
         for action in SUNFLOWER_ANIMATIONS:
-            frames = get_animation_frames(action, 'sunflower')
-            self.animation_frames[action] = [pygame.image.load(f'animations/sunflower/Sunflower{f:04d}.png') for f in frames]
+            self.animation_frames[action] = preloaded_images[f'sunflower_{action}']
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -222,17 +222,25 @@ class Sunflower(Plant):
 class CherryBomb(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x, y, "Cherry Bomb", game, row)
+        self.explosion_delay = PLANT_TIMERS.get("Cherry Bomb Explosion Delay", 1000) / 1000.0
+        self.timer = self.explosion_delay
+        self.exploded = False
 
-        # Load animation frames
+        # Use preloaded animation frames
         self.animation_frames = {}
         for action in CHERRYBOMB_ANIMATIONS:
-            frames = get_animation_frames(action, 'cherrybomb')
-            self.animation_frames[action] = [pygame.image.load(f'animations/cherry_bomb/Cherrybomb{f:04d}.png') for f in frames]
+            self.animation_frames[action] = preloaded_images[f'cherrybomb_{action}']
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
 
     def update(self, dt):
+        if self.exploded:
+            return
+        self.timer -= dt
+        if self.timer <= 0:
+            self.explode()
+            return
         # Update idle animation
         self.idle_timer += dt
         idle_fps = CHERRYBOMB_ANIMATIONS['idle']['fps']
@@ -240,7 +248,28 @@ class CherryBomb(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+    def explode(self):
+        self.exploded = True
+        damage = PLANT_DAMAGE.get("CherryBomb", 1800)
+        # Damage zombies in a 3x3 area around the plant
+        plant_row = self.row
+        plant_col = int((self.x - self.game.main_game.game_field.field_x) // self.game.main_game.game_field.cell_width)
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                r = plant_row + dr
+                c = plant_col + dc
+                if 0 <= r < self.game.main_game.game_field.rows and 0 <= c < self.game.main_game.game_field.cols:
+                    # Damage zombies in this cell's lane
+                    for zombie in self.game.main_game.zombies:
+                        if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
+                            zombie.health -= damage
+        # Remove plant from grid
+        self.game.main_game.game_field.grid[self.row][plant_col] = None
+        self.game.sound_manager.play_sound('plant_break')  # or explosion sound if available
+
     def draw(self, screen):
+        if self.exploded:
+            return
         frame = self.animation_frames['idle'][self.idle_frame_index]
         scaled_frame = pygame.transform.scale(frame, (200, 200))
         screen.blit(scaled_frame, (self.x, self.y))
@@ -249,11 +278,10 @@ class WallNut(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x, y, "Wall Nut", game, row)
 
-        # Load animation frames
+        # Use preloaded animation frames
         self.animation_frames = {}
         for action in WALLNUT_ANIMATIONS:
-            frames = get_animation_frames(action, 'wallnut')
-            self.animation_frames[action] = [pygame.image.load(f'animations/wallnut/Wallnut{f:04d}.png') for f in frames]
+            self.animation_frames[action] = preloaded_images[f'wallnut_{action}']
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -271,6 +299,352 @@ class WallNut(Plant):
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 
+class PotatoMine(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Potato Mine", game, row)
+        self.arming_delay = PLANT_TIMERS.get("Potato Mine Surfacing", 15000) / 1000.0
+        self.timer = self.arming_delay
+        self.armed = False
+        self.exploded = False
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in POTATO_MINE_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'potato_mine_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        if self.exploded:
+            return
+        if not self.armed:
+            self.timer -= dt
+            if self.timer <= 0:
+                self.armed = True
+                # Change to armed animation if available, else stay idle
+        else:
+            # Check if zombie is stepping on it
+            for zombie in self.game.main_game.zombies:
+                if zombie.lane == self.row and abs(zombie.x - self.x) < 50:  # close enough
+                    self.explode()
+                    return
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = POTATO_MINE_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def explode(self):
+        self.exploded = True
+        damage = PLANT_DAMAGE.get("CherryBomb", 1800)  # same as cherry bomb?
+        # Damage zombies in area
+        plant_row = self.row
+        plant_col = int((self.x - self.game.main_game.game_field.field_x) // self.game.main_game.game_field.cell_width)
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                r = plant_row + dr
+                c = plant_col + dc
+                if 0 <= r < self.game.main_game.game_field.rows and 0 <= c < self.game.main_game.game_field.cols:
+                    for zombie in self.game.main_game.zombies:
+                        if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
+                            zombie.health -= damage
+        # Remove plant from grid
+        self.game.main_game.game_field.grid[self.row][plant_col] = None
+        self.game.sound_manager.play_sound('plant_break')
+
+    def draw(self, screen):
+        if self.exploded:
+            return
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class SnowPea(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x-30, y, "Snow Pea", game, row)
+        self.projectile_speed = 480
+        self.damage = PLANT_DAMAGE.get("SnowPea", 20)
+        self.fire_rate = PLANT_TIMERS.get("Snow Pea Fire Rate", 1500) / 1000.0
+        self.projectile_image = pygame.image.load(PROJECTILE_TEXTURES_PATH["SnowPea"]).convert_alpha()
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in SNOW_PEA_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'snow_pea_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+        self.blink_frame_index = 0
+        self.blink_timer = 0.0
+        self.shoot_frame_index = 0
+        self.shoot_timer = 0.0
+        self.shoot_bottom_frame_index = 0
+        self.shoot_delay = 0.0
+        self.shoot_delay_timer = 0.0
+
+    def update(self, dt, zombies):
+        # Update idle animation (pauses during blink)
+        if self.current_action != 'blink':
+            self.idle_timer += dt
+            idle_fps = SNOW_PEA_ANIMATIONS['idle']['fps']
+            if self.idle_timer >= 1.0 / idle_fps:
+                self.idle_timer -= 1.0 / idle_fps
+                self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+        # Check if there is a zombie in the same lane ahead
+        has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x)
+        if has_target:
+            if self.shoot_delay == 0.0:
+                self.shoot_delay = random.uniform(1.0, 1.5)
+            self.shoot_delay_timer += dt
+            if self.shoot_delay_timer >= self.shoot_delay:
+                current_time = time.time()
+                if current_time - self.last_action_time >= self.fire_rate:
+                    self.current_action = 'shoot'
+                    self.shoot_frame_index = 0
+                    self.shoot_timer = 0.0
+                    self.shoot_bottom_frame_index = self.idle_frame_index
+                    self.shoot()
+                    self.last_action_time = current_time
+                    self.shoot_delay_timer = 0.0
+                    self.shoot_delay = 0.0
+        else:
+            self.shoot_delay = 0.0
+            self.shoot_delay_timer = 0.0
+
+        # Random blink
+        if self.current_action == 'idle' and self.idle_frame_index == 0 and random.random() < 0.1:
+            self.current_action = 'blink'
+            self.blink_frame_index = 0
+            self.blink_timer = 0.0
+
+        # Update blink animation
+        if self.current_action == 'blink':
+            self.blink_timer += dt
+            blink_fps = SNOW_PEA_ANIMATIONS['blink']['fps']
+            if self.blink_timer >= 1.0 / blink_fps:
+                self.blink_timer -= 1.0 / blink_fps
+                self.blink_frame_index += 1
+                if self.blink_frame_index >= len(self.animation_frames['blink']):
+                    self.current_action = 'idle'
+                    self.blink_frame_index = 0
+
+        # Update shoot animation
+        if self.current_action == 'shoot':
+            self.shoot_timer += dt
+            shoot_fps = SNOW_PEA_ANIMATIONS['shoot']['fps']
+            if self.shoot_timer >= 1.0 / shoot_fps:
+                self.shoot_timer -= 1.0 / shoot_fps
+                self.shoot_frame_index += 1
+                if self.shoot_frame_index >= len(self.animation_frames['shoot']):
+                    self.current_action = 'idle'
+                    self.shoot_frame_index = 0
+
+        # Update projectiles
+        for projectile in self.projectiles:
+            projectile.update(dt)
+        self.projectiles = [p for p in self.projectiles if p.active]
+
+    def shoot(self):
+        proj_x = self.x + 50
+        proj_y = self.y + 35
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='snowpea')
+        self.projectiles.append(new_proj)
+
+    def draw(self, screen):
+        if self.current_action == 'idle':
+            frame = self.animation_frames['idle'][self.idle_frame_index]
+        elif self.current_action == 'blink':
+            frame = self.animation_frames['idle'][self.idle_frame_index].copy()
+            blink_frame = self.animation_frames['blink'][self.blink_frame_index]
+            frame.blit(blink_frame, (0,0))
+        elif self.current_action == 'shoot':
+            frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
+            shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
+            frame.blit(shoot_top_frame, (0,0))
+        scaled_frame = pygame.transform.scale(frame, (180, 180))
+        screen.blit(scaled_frame, (self.x, self.y))
+        # Draw projectiles
+        for projectile in self.projectiles:
+            projectile.draw(screen)
+
+class Chomper(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Chomper", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in CHOMPER_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'chomper_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = CHOMPER_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (200, 200))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class Repeater(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Repeater", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in REPEATER_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'repeater_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = REPEATER_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (180, 180))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class LilyPad(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Lily Pad", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in LILYPAD_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'lilypad_{action}']
+        self.current_action = 'blink'
+        self.blink_frame_index = 0
+        self.blink_timer = 0.0
+
+    def update(self, dt):
+        # Update blink animation
+        self.blink_timer += dt
+        blink_fps = LILYPAD_ANIMATIONS['blink']['fps']
+        if self.blink_timer >= 1.0 / blink_fps:
+            self.blink_timer -= 1.0 / blink_fps
+            self.blink_frame_index = (self.blink_frame_index + 1) % len(self.animation_frames['blink'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['blink'][self.blink_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class PuffShroom(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Puff Shroom", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in PUFF_SHROOM_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'puff_shroom_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = PUFF_SHROOM_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class SunShroom(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Sun Shroom", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in SUN_SHROOM_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'sun_shroom_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = SUN_SHROOM_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class FumeShroom(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Fume Shroom", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in FUME_SHROOM_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'fume_shroom_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = FUME_SHROOM_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        screen.blit(scaled_frame, (self.x, self.y))
+
+class GraveBuster(Plant):
+    def __init__(self, x, y, game, row):
+        super().__init__(x, y, "Grave Buster", game, row)
+
+        # Use preloaded animation frames
+        self.animation_frames = {}
+        for action in GRAVE_BUSTER_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'grave_buster_{action}']
+        self.current_action = 'idle'
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+
+    def update(self, dt):
+        # Update idle animation
+        self.idle_timer += dt
+        idle_fps = GRAVE_BUSTER_ANIMATIONS['idle']['fps']
+        if self.idle_timer >= 1.0 / idle_fps:
+            self.idle_timer -= 1.0 / idle_fps
+            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+    def draw(self, screen):
+        frame = self.animation_frames['idle'][self.idle_frame_index]
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        screen.blit(scaled_frame, (self.x, self.y))
+
 class Sun:
     def __init__(self, x, y, game, sun_type='sunflower'):
         self.x = x
@@ -278,11 +652,7 @@ class Sun:
         self.game = game
         self.sun_type = sun_type  # 'sunflower' or 'sky'
         self.collected = False
-        self.animation_frames = []
-        frames = get_animation_frames('idle', 'sun')
-        for f in frames:
-            img = pygame.image.load(f'animations/sun/Sun{f:04d}.png').convert_alpha()
-            self.animation_frames.append(img)
+        self.animation_frames = preloaded_images['sun_idle']
         self.current_frame = 0
         self.frame_timer = 0.0
         self.frame_duration = 1.0 / SUN_ANIMATIONS['idle']['fps']
@@ -328,7 +698,7 @@ class Sun:
         if self.collected:
             return
         frame = self.animation_frames[self.current_frame]
-        scaled_frame = pygame.transform.scale(frame, (80, 80))
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.rect.x, self.rect.y))
 
     def collect(self):

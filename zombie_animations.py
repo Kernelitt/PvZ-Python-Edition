@@ -91,12 +91,177 @@ WALLNUT_ANIMATIONS = {
     }
 }
 
+POTATO_MINE_ANIMATIONS = {
+    'idle': {
+        'start_frame': 21,
+        'end_frame': 32,
+        'loop': True,
+        'fps': 12
+    }
+}
+
+SNOW_PEA_ANIMATIONS = {
+    'idle': {
+        'start_frame': 80,
+        'end_frame': 104,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 12
+    },
+    'shoot': {
+        'start_frame': 55,
+        'end_frame': 79,  # Use shoot_top frames for timing
+        'loop': False,
+        'fps': 24
+    },
+    'shoot_top': {
+        'start_frame': 55,
+        'end_frame': 79,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 24
+    },
+    'shoot_bottom': {
+        'start_frame': 5,
+        'end_frame': 29,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 24
+    },
+    'blink': {
+        'start_frame': 1,
+        'end_frame': 5,  # Adjust based on actual frames
+        'loop': False,
+        'fps': 12
+    }
+}
+
+CHOMPER_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 24,
+        'loop': True,
+        'fps': 12
+    }
+}
+
+REPEATER_ANIMATIONS = {
+    'idle': {
+        'start_frame': 80,
+        'end_frame': 104,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 12
+    },
+    'shoot': {
+        'start_frame': 55,
+        'end_frame': 79,  # Use shoot_top frames for timing
+        'loop': False,
+        'fps': 24
+    },
+    'shoot_top': {
+        'start_frame': 55,
+        'end_frame': 79,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 24
+    },
+    'shoot_bottom': {
+        'start_frame': 5,
+        'end_frame': 29,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 24
+    },
+    'blink': {
+        'start_frame': 1,
+        'end_frame': 5,  # Adjust based on actual frames
+        'loop': False,
+        'fps': 12
+    }
+}
+
+PUFF_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 5,
+        'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+SUN_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 5,
+        'end_frame': 17,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+FUME_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 5,
+        'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+GRAVE_BUSTER_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 39,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+HYPNO_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 20,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+SCAREDY_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 6,
+        'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+ICE_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    }
+}
+
+DOOM_SHROOM_ANIMATIONS = {
+    'idle': {
+        'start_frame': 53,
+        'end_frame': 77,
+        'loop': True,
+        'fps': 24
+    }
+}
+
 LILYPAD_ANIMATIONS = {
     'blink': {
         'start_frame': 1,
         'end_frame': 4,
         'loop': False,
-        'fps': 12
+        'fps': 24
+    }
+}
+
+SQUASH_ANIMATIONS = {
+    'idle': {
+        'start_frame': 5,
+        'end_frame': 24,
+        'loop': True,
+        'fps': 24
     }
 }
 
@@ -130,6 +295,24 @@ def get_animation_frames(action, anim_type='zombie'):
         anim = CHERRYBOMB_ANIMATIONS[action]
     elif anim_type == 'wallnut' and action in WALLNUT_ANIMATIONS:
         anim = WALLNUT_ANIMATIONS[action]
+    elif anim_type == 'potato_mine' and action in POTATO_MINE_ANIMATIONS:
+        anim = POTATO_MINE_ANIMATIONS[action]
+    elif anim_type == 'snow_pea' and action in SNOW_PEA_ANIMATIONS:
+        anim = SNOW_PEA_ANIMATIONS[action]
+    elif anim_type == 'chomper' and action in CHOMPER_ANIMATIONS:
+        anim = CHOMPER_ANIMATIONS[action]
+    elif anim_type == 'repeater' and action in REPEATER_ANIMATIONS:
+        anim = REPEATER_ANIMATIONS[action]
+    elif anim_type == 'puff_shroom' and action in PUFF_SHROOM_ANIMATIONS:
+        anim = PUFF_SHROOM_ANIMATIONS[action]
+    elif anim_type == 'sun_shroom' and action in SUN_SHROOM_ANIMATIONS:
+        anim = SUN_SHROOM_ANIMATIONS[action]
+    elif anim_type == 'fume_shroom' and action in FUME_SHROOM_ANIMATIONS:
+        anim = FUME_SHROOM_ANIMATIONS[action]
+    elif anim_type == 'grave_buster' and action in GRAVE_BUSTER_ANIMATIONS:
+        anim = GRAVE_BUSTER_ANIMATIONS[action]
+    elif anim_type == 'lilypad' and action in LILYPAD_ANIMATIONS:
+        anim = LILYPAD_ANIMATIONS[action]
     elif anim_type == 'sun' and action in SUN_ANIMATIONS:
         anim = SUN_ANIMATIONS[action]
     elif anim_type == 'main_menu' and action in MAIN_MENU:

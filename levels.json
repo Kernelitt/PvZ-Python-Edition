@@ -1,9 +1,33 @@
 {
   "1-1": {
+    "name": "Day 1",
+    "background": "background1.png",
+    "waves": 10,
+    "start_sun": 200,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": []
+  },
+  "1-2": {
+    "name": "Day 2",
+    "background": "background1.png",
+    "waves": 20,
+    "start_sun": 50,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": []
+  },
+  "2-1": {
     "name": "Night 1",
     "background": "background2.png",
+    "waves": 10,
+    "start_sun": 50,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": []
+  },
+  "2-2": {
+    "name": "Night 2",
+    "background": "background2.png",
     "waves": 20,
-    "start_sun": 500,
+    "start_sun": 50,
     "zombies": ["Basic Zombie"],
     "banned_plants": []
   }

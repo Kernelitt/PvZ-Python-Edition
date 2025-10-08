@@ -199,3 +199,8 @@ PROJECTILE_TEXTURES_PATH = {
     "Butter":"images/Cornpult_kernal.png",
     "Melon":"images/Melonpult_melon.png",    
 }
+
+WAVE_OPTIONS = {
+    "Every": 1,
+    "Points":8
+}

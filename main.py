@@ -41,9 +41,11 @@ class Slider:
             self.value = max(self.min_value, min(self.max_value, self.value))
             self.on_change(self.value)
 
-from definitions import BASE_WIDTH, BASE_HEIGHT, PLANT_SUN_COST, PLANT_RECHARGE, PLANT_HEALTH, ZOMBIE_COST, ZOMBIE_HEALTH
+from definitions import *
 from plants import *
 from zombie_animations import *
+from zombies import Zombie
+from preloader import preload_all, preload_ui
 
 class SoundManager:
     def __init__(self):
@@ -115,106 +117,7 @@ class SoundManager:
         if sound_name in self.sound_effects and self.sound_effects[sound_name]:
             self.sound_effects[sound_name].play()
 
-class Zombie:
-    def __init__(self, z_type, lane, scaler, game_field):
-        self.z_type = z_type
-        self.lane = lane
-        self.x = scaler.scale_x(BASE_WIDTH)
-        self.y = scaler.scale_y(160 + lane * ((1025 - 160) / 5) + ((1025 - 160) / 5) / 2 - 50)
-        self.speed = 45 * 1 + random.randint(0,1) / 10 
-        self.health = ZOMBIE_HEALTH.get(z_type + ' Health', 270)
-        self.game_field = game_field
-        self.attack_sound_index = random.randint(0, 1)
-        self.last_sound_time = 0.0
-        self.rect = pygame.Rect(self.x, self.y, 50, 100)
 
-        # Load animation frames
-        self.animation_frames = {}
-        for action in ZOMBIE_ANIMATIONS:
-            frames = get_animation_frames(action, 'zombie')
-            self.animation_frames[action] = [pygame.image.load(f'animations/basic_zombie/Zombie{f:04d}.png') for f in frames]
-        self.current_action = 'walk'
-        self.frame_index = 0
-        self.animation_timer = 0.0
-        self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
-        self.dying = False
-        self.to_remove = False
-
-    def update(self, dt):
-        if self.health <= 0 and not self.dying:
-            self.dying = True
-            self.current_action = 'death'
-            self.frame_index = 0
-            self.animation_timer = 0.0
-            self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
-
-        if self.dying:
-            if self.current_action == 'death':
-                self.animation_timer += dt
-                if self.animation_timer >= self.frame_duration:
-                    self.animation_timer -= self.frame_duration
-                    self.frame_index += 1
-                    if self.frame_index >= len(self.animation_frames[self.current_action]):
-                        self.to_remove = True
-                        return
-            return
-
-        # Find the rightmost plant in the lane ahead
-        target_col = None
-        for col in range(self.game_field.cols - 1, -1, -1):
-            if self.game_field.grid[self.lane][col] is not None:
-                plant_x = self.game_field.field_x + col * self.game_field.cell_width
-                if self.x > plant_x:
-                    target_col = col
-                    break
-        if target_col is not None:
-            # Target the plant
-            plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
-            if self.x > plant_x + self.game_field.cell_width / 2:
-                self.x -= self.speed * dt
-                if self.current_action != 'walk':
-                    self.current_action = 'walk'
-                    self.frame_index = 0
-                    self.animation_timer = 0.0
-                    self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
-            else:
-                # At plant, damage it
-                if self.current_action != 'attack':
-                    self.current_action = 'attack'
-                    self.frame_index = 0
-                    self.animation_timer = 0.0
-                    self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
-                self.last_sound_time += dt
-                if self.last_sound_time > 0.75:
-                    self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
-                    self.last_sound_time = 0.0
-                plant = self.game_field.grid[self.lane][target_col]
-                if hasattr(plant, 'health'):
-                    plant.health -= 1
-                    if plant.health <= 0:
-                        self.game_field.grid[self.lane][target_col] = None
-                        self.game_field.game.sound_manager.play_sound('plant_break')
-        else:
-            self.x -= self.speed * dt
-            if self.current_action != 'walk':
-                self.current_action = 'walk'
-                self.frame_index = 0
-                self.animation_timer = 0.0
-                self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
-
-        self.rect.x = int(self.x)
-        self.rect.y = int(self.y)
-
-        # Update animation
-        self.animation_timer += dt
-        if self.animation_timer >= self.frame_duration:
-            self.animation_timer -= self.frame_duration
-            self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
-
-    def draw(self, screen):
-        frame = self.animation_frames[self.current_action][self.frame_index]
-        scaled_frame = pygame.transform.scale(frame, (280, 250))
-        screen.blit(scaled_frame, (self.x-80, self.y-100))
 
 class GameField:
     def __init__(self, scaler, width, height, game):
@@ -234,6 +137,15 @@ class GameField:
             'Sunflower': Sunflower,
             'Cherry Bomb': CherryBomb,
             'Wall Nut': WallNut,
+            'Potato Mine': PotatoMine,
+            'Snow Pea': SnowPea,
+            'Chomper': Chomper,
+            'Repeater': Repeater,
+            'Lily Pad': LilyPad,
+            'Puff Shroom': PuffShroom,
+            'Sun Shroom': SunShroom,
+            'Fume Shroom': FumeShroom,
+            'Grave Buster': GraveBuster,
         }
 
     def draw(self, screen):
@@ -282,6 +194,7 @@ class GameField:
                                 print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
                             # Reset recharge timer
                             self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                            self.game.main_game.selected_seed = None
                         else:
                             print("Not enough sun!")
                 else:
@@ -304,7 +217,7 @@ class MainMenu:
         adventure_normal = pygame.image.load('reanim/SelectorScreen_Adventure_button.png')
         adventure_hover = pygame.image.load('reanim/SelectorScreen_Adventure_highlight.png')
         adventure_button = SimpleImageButton(
-            (game.scaler.scale_x(1200), game.scaler.scale_y(90)),
+            (game.scaler.scale_x(1000), game.scaler.scale_y(160)),
             (game.scaler.scale_x(adventure_normal.get_width()*1.6), game.scaler.scale_y(adventure_normal.get_height()*1.6)),
             adventure_normal,
             adventure_hover,
@@ -316,7 +229,7 @@ class MainMenu:
         minigames_normal = pygame.image.load('reanim/SelectorScreen_Minigames_button.png')
         minigames_hover = pygame.image.load('reanim/SelectorScreen_Minigames_highlight.png')
         minigames_button = SimpleImageButton(
-            (game.scaler.scale_x(1200), game.scaler.scale_y(260)),
+            (game.scaler.scale_x(1000), game.scaler.scale_y(320)),
             (game.scaler.scale_x(minigames_normal.get_width()*1.6), game.scaler.scale_y(minigames_normal.get_height()*1.6)),
             minigames_normal,
             minigames_hover,
@@ -328,7 +241,7 @@ class MainMenu:
         puzzle_normal = pygame.image.load('reanim/SelectorScreen_Puzzles_button.png')
         puzzle_hover = pygame.image.load('reanim/SelectorScreen_Puzzles_highlight.png')
         puzzle_button = SimpleImageButton(
-            (game.scaler.scale_x(1200), game.scaler.scale_y(430)),
+            (game.scaler.scale_x(1000), game.scaler.scale_y(470)),
             (game.scaler.scale_x(puzzle_normal.get_width()*1.6), game.scaler.scale_y(puzzle_normal.get_height()*1.6)),
             puzzle_normal,
             puzzle_hover,
@@ -340,7 +253,7 @@ class MainMenu:
         survival_normal = pygame.image.load('reanim/SelectorScreen_Survival_button.png')
         survival_hover = pygame.image.load('reanim/SelectorScreen_Survival_highlight.png')
         survival_button = SimpleImageButton(
-            (game.scaler.scale_x(1200), game.scaler.scale_y(570)),
+            (game.scaler.scale_x(1000), game.scaler.scale_y(610)),
             (game.scaler.scale_x(survival_normal.get_width()*1.6), game.scaler.scale_y(survival_normal.get_height()*1.6)),
             survival_normal,
             survival_hover,
@@ -349,7 +262,7 @@ class MainMenu:
         self.image_buttons.append(survival_button)
 
         almanac_button = SimpleImageButton(
-            (game.scaler.scale_x(1050), game.scaler.scale_y(800)),
+            (game.scaler.scale_x(850), game.scaler.scale_y(800)),
             (game.scaler.scale_x(99*1.6), game.scaler.scale_y(99*1.6)),
             pygame.image.load('images/SelectorScreen_Almanac.png'),
             pygame.image.load('images/SelectorScreen_AlmanacHighlight.png'),
@@ -358,7 +271,7 @@ class MainMenu:
         self.image_buttons.append(almanac_button)
 
         store_button = SimpleImageButton(
-            (game.scaler.scale_x(1180), game.scaler.scale_y(850)),
+            (game.scaler.scale_x(960), game.scaler.scale_y(850)),
             (game.scaler.scale_x(130*1.6), game.scaler.scale_y(89*1.6)),
             pygame.image.load('images/SelectorScreen_Store.png'),
             pygame.image.load('images/SelectorScreen_StoreHighlight.png'),
@@ -367,7 +280,7 @@ class MainMenu:
         self.image_buttons.append(store_button)
 
         help_button = SimpleImageButton(
-            (game.scaler.scale_x(1490), game.scaler.scale_y(900)),
+            (game.scaler.scale_x(1270), game.scaler.scale_y(950)),
             (game.scaler.scale_x(48*2), game.scaler.scale_y(22*2)),
             pygame.image.load('images/SelectorScreen_Help1.png'),
             pygame.image.load('images/SelectorScreen_Help2.png'),
@@ -376,7 +289,7 @@ class MainMenu:
         self.image_buttons.append(help_button)
 
         options_button = SimpleImageButton(
-            (game.scaler.scale_x(1620), game.scaler.scale_y(940)),
+            (game.scaler.scale_x(1400), game.scaler.scale_y(1000)),
             (game.scaler.scale_x(81*1.2), game.scaler.scale_y(31*1.2)),
             pygame.image.load('images/SelectorScreen_Options1.png'),
             pygame.image.load('images/SelectorScreen_Options2.png'),
@@ -385,7 +298,7 @@ class MainMenu:
         self.image_buttons.append(options_button)
 
         quit_button = SimpleImageButton(
-            (game.scaler.scale_x(1760), game.scaler.scale_y(910)),
+            (game.scaler.scale_x(1530), game.scaler.scale_y(970)),
             (game.scaler.scale_x(47*2), game.scaler.scale_y(27*2)),
             pygame.image.load('images/SelectorScreen_Quit1.png'),
             pygame.image.load('images/SelectorScreen_Quit2.png'),
@@ -394,10 +307,7 @@ class MainMenu:
         self.image_buttons.append(quit_button)
 
     def start_game(self):
-        self.game.state = 'seed_select'
-        self.game.pre_animation_delay = 2.0
-        self.game.pending_state = None
-        self.game.target_offset_pending = -1080 * self.game.bg_scale_factor
+        self.game.state = 'level_menu'
 
     def open_minigames(self):
         print("Mini-Games...")
@@ -453,8 +363,10 @@ class MainMenu:
             button.draw(screen)
 
 class SeedSelect:
-    def __init__(self, game):
+    def __init__(self, game, background, banned_plants):
         self.game = game
+        self.background = background
+        self.banned_plants = banned_plants
         self.seed_bank_bg = pygame.image.load('images/SeedBank.png')
         # Scale by 1.8 like seedbank
         self.seed_bank_bg = pygame.transform.scale(self.seed_bank_bg, (self.seed_bank_bg.get_width() * 1.8, self.seed_bank_bg.get_height() * 1.8))
@@ -465,7 +377,7 @@ class SeedSelect:
         self.seed_chooser_bg = pygame.transform.scale(self.seed_chooser_bg, (self.seed_chooser_bg.get_width() * 1.8, self.seed_chooser_bg.get_height() * 1.8))
 
         # Seed selection data
-        self.all_plants = [p for p in PLANT_SUN_COST.keys() if p not in self.game.level_data['banned_plants']]
+        self.all_plants = [p for p in PLANT_SUN_COST.keys() if p not in self.banned_plants]
         self.selected_plants = []
         self.plant_buttons = []
         self.start_game_button = None
@@ -676,7 +588,7 @@ class PauseMenu:
 
     def restart_level(self):
         if self.previous_state == 'game':
-            self.game.main_game = MainGame(self.game)
+            self.game.main_game = MainGame(self.game, self.game.selected_level)
             self.game.state = 'game'
 
     def exit_to_menu(self):
@@ -716,10 +628,11 @@ class PauseMenu:
         self.exit_button.draw(self.game.screen, self.game.font)
 
 class MainGame:
-    def __init__(self, game):
+    def __init__(self, game, level_name):
         self.game = game
+        self.level_data = game.levels[level_name]
         self.game_field = GameField(game.scaler, game.width, game.height, game)
-        self.sun_count = self.game.level_data['start_sun']
+        self.sun_count = self.level_data['start_sun']
         self.selected_seed = None
         self.hotbar_height = game.scaler.scale_y(100 * 2)
         self.wave_number = 1
@@ -730,7 +643,7 @@ class MainGame:
         self.wave_active = False
         self.wave_timer = 0.0
         self.initial_wave_hp = 0
-        self.max_waves = self.game.level_data['waves']
+        self.max_waves = self.level_data['waves']
         self.debug_mode = False
         self.dt = 0
         self.game_won = False
@@ -807,6 +720,8 @@ class MainGame:
                 for i in range(len(self.game.seed_packets)):
                     rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
                     if rect.collidepoint(event.pos):
+                        if self.seed_recharge_timers[self.game.seed_packets[i]['name']] > 0:
+                            continue
                         self.selected_seed = i
                         print(f"Selected seed: {self.game.seed_packets[i]['name']}")
                         break
@@ -872,7 +787,7 @@ class MainGame:
             for col in range(self.game_field.cols):
                 plant = self.game_field.grid[row][col]
                 if plant and hasattr(plant, 'update'):
-                    if isinstance(plant, Peashooter):
+                    if isinstance(plant, (Peashooter, SnowPea)):
                         plant.update(dt, self.zombies)
                     else:
                         plant.update(dt)
@@ -902,12 +817,19 @@ class MainGame:
             for row in range(self.game_field.rows):
                 for col in range(self.game_field.cols):
                     plant = self.game_field.grid[row][col]
-                    if plant and isinstance(plant, Peashooter):
-                        for projectile in plant.projectiles[:]:  # copy to avoid modification during iteration
+                    if plant and hasattr(plant, 'projectiles'):
+                        for projectile in plant.projectiles[:]:
                             if projectile.collides_with(zombie):
-                                zombie.health -= projectile.damage
+                                if projectile.proj_type == 'snowpea':
+                                    zombie.slow_timer = 10.0
+                                if zombie.cone_health > 0:
+                                    zombie.cone_health -= projectile.damage
+                                    if zombie.cone_health <= 0:
+                                        zombie.cone_health = 0
+                                else:
+                                    zombie.health -= projectile.damage
                                 plant.projectiles.remove(projectile)
-                                break  # one projectile per zombie per frame
+                                break
 
         # Check for lose condition: if any zombie reaches the house (x < 0)
         if any(z.x < 0 for z in self.zombies):
@@ -924,7 +846,7 @@ class MainGame:
         self.current_wave_zombies = [z for z in self.current_wave_zombies if z in self.zombies]
 
         # Check wave end conditions
-        total_hp = sum(z.health for z in self.current_wave_zombies)
+        total_hp = sum(z.health + z.cone_health for z in self.current_wave_zombies)
         self.wave_timer += dt
 
         # Wave ends if total HP < 50% initial or 25 seconds passed
@@ -942,7 +864,7 @@ class MainGame:
 
     def start_wave(self):
         # Calculate wave points based on wave number
-        self.wave_points = 1 + (self.wave_number - 1) // 3
+        self.wave_points = WAVE_OPTIONS["Points"] + ((self.wave_number - 1) // WAVE_OPTIONS["Every"]) * WAVE_OPTIONS["Points"]
         self.initial_wave_hp = 0
         self.current_wave_zombies = []
 
@@ -968,7 +890,7 @@ class MainGame:
             zombie = Zombie(z_type, lane, self.game.scaler, self.game_field)
             self.zombies.append(zombie)
             self.current_wave_zombies.append(zombie)
-            self.initial_wave_hp += zombie.health
+            self.initial_wave_hp += zombie.health + zombie.cone_health
 
         self.wave_active = True
         self.wave_timer = 0
@@ -1020,7 +942,7 @@ class MainGame:
             screen.blit(fps_text, (self.game.width - fps_text.get_width() - 10, 10 + wave_text.get_height() + 10))
             # draw zombie info
             for zombie in self.zombies:
-                z_text = self.game.small_font.render(f"{zombie.z_type} HP:{zombie.health}", True, (255, 0, 0))
+                z_text = self.game.small_font.render(f"{zombie.z_type} HP:{zombie.health} Cone:{zombie.cone_health}", True, (255, 0, 0))
                 screen.blit(z_text, (zombie.x, zombie.y - 25))
             # draw plant names
             for row in range(self.game_field.rows):
@@ -1059,6 +981,7 @@ class WelcomeScreen:
         elif self.phase == 'fade_out':
             self.alpha = max(0, 255 - int((self.timer / self.fade_duration) * 255))
             if self.timer >= self.fade_duration:
+                preload_all()
                 self.phase = 'show_titlescreen'
         elif self.phase == 'show_titlescreen':
             self.title_alpha = min(255, self.title_alpha + dt * 200)  # fade in over ~1.275 seconds
@@ -1090,6 +1013,80 @@ class WelcomeScreen:
             button_surface = self.button.copy()
             button_surface.set_alpha(self.title_alpha)
             screen.blit(button_surface, self.button_rect)
+
+class Menu:
+    def __init__(self, game):
+        self.game = game
+        self.background = preloaded_images['challenge_background']
+        self.window_image = preloaded_images['challenge_window']
+        self.window_highlight = preloaded_images['challenge_window_highlight']
+        self.close_button = preloaded_images['almanac_closebutton']
+        self.close_highlight = preloaded_images['almanac_closebuttonhighlight']
+        self.thumbnails = preloaded_images['survival_thumbnails']
+        # cut thumbnails into list
+        self.thumbnail_width = self.thumbnails.get_width() // 11
+        self.thumbnail_height = self.thumbnails.get_height()
+        self.thumbnails_list = []
+        for i in range(11):
+            rect = pygame.Rect(i * self.thumbnail_width, 0, self.thumbnail_width, self.thumbnail_height)
+            self.thumbnails_list.append(self.thumbnails.subsurface(rect))
+        # level buttons
+        self.level_buttons = []
+        LEVEL_DATA = json.load(open('levels.json'))
+        positions = [(200, 200), (400, 200), (600, 200), (800, 200)]  # for 4 levels
+        for i, (level_key, level_data) in enumerate(LEVEL_DATA.items()):
+            if 'background1.png' in level_data['background']:
+                icon_index = 0  # day
+            elif 'background2.png' in level_data['background']:
+                icon_index = 1  # night
+            else:
+                icon_index = 0
+            button = {
+                'rect': pygame.Rect(positions[i][0], positions[i][1], self.window_image.get_width(), self.window_image.get_height()),
+                'level': level_key,
+                'icon': self.thumbnails_list[icon_index],
+                'hovered': False
+            }
+            self.level_buttons.append(button)
+        self.close_rect = pygame.Rect(20, 1030, self.close_button.get_width(), self.close_button.get_height())
+        self.close_hovered = False
+
+    def handle_events(self, events):
+        for event in events:
+            if event.type == pygame.MOUSEMOTION:
+                mouse_pos = event.pos
+                for button in self.level_buttons:
+                    button['hovered'] = button['rect'].collidepoint(mouse_pos)
+                self.close_hovered = self.close_rect.collidepoint(mouse_pos)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for button in self.level_buttons:
+                        if button['hovered']:
+                            self.game.selected_level = button['level']
+                            self.game.load_background()
+                            self.game.seed_select = SeedSelect(self.game, self.game.levels[self.game.selected_level]['background'], self.game.levels[self.game.selected_level]['banned_plants'])
+                            self.game.state = 'seed_select'
+                            self.game.post_animation_delay = 1.0
+                            self.game.start_animation(-1080 * self.game.bg_scale_factor)
+                            break
+                    if self.close_hovered:
+                        self.game.state = 'menu'
+
+
+    def draw(self, screen):
+        screen.blit(self.background, (0,0))
+        for button in self.level_buttons:
+            img = self.window_highlight if button['hovered'] else self.window_image
+            screen.blit(img, button['rect'])
+            # blit icon
+            icon_x = button['rect'].x + (button['rect'].width - self.thumbnail_width) // 2
+            icon_y = button['rect'].y + (button['rect'].height - self.thumbnail_height - 50) // 2
+            screen.blit(button['icon'], (icon_x, icon_y))
+            level_text = self.game.font.render(button['level'], True, (0,0,0))
+            text_rect = level_text.get_rect(center=(button['rect'].centerx, button['rect'].centery + 40))
+            screen.blit(level_text, text_rect)
+        close_img = self.close_highlight if self.close_hovered else self.close_button
+        screen.blit(close_img, self.close_rect)
 
 class Game:
     def __init__(self):
@@ -1123,36 +1120,32 @@ class Game:
 
         # Load levels
         self.levels = json.load(open('levels.json'))
-        self.level_data = self.levels['1-1']
+        self.selected_level = '1-1'
 
         # Load images
         self.seedbank_image = pygame.image.load('images/seedbank.png')
         # Scale seedbank by 2
         self.seedbank_image = pygame.transform.scale(self.seedbank_image, (self.seedbank_image.get_width() * 1.8, self.seedbank_image.get_height() * 1.8))
         self.flag_meter_image = pygame.image.load('images/FlagMeter.png')
-        background_image = pygame.image.load("images/"+self.level_data['background'])
         seeds_image = pygame.image.load('images/seeds.png')
         # Extract the third seed image (0-indexed as 2)
         self.seed_image = seeds_image.subsurface((2 * 50, 0, 50, 70))
 
         # Load plant icons
         self.plant_icons = {
-            'Peashooter': pygame.image.load('animations/peashooter/Peashooter0080.png'),
-            'Sunflower': pygame.image.load('animations/sunflower/Sunflower0005.png'),
-            'Cherry Bomb': pygame.image.load('animations/cherry_bomb/Cherrybomb0015.png'),
-            'Wall Nut': pygame.image.load('animations/wallnut/Wallnut0001.png'),
+            'Peashooter': pygame.image.load('animations/Plants/peashooter/Peashooter0080.png'),
+            'Sunflower': pygame.image.load('animations/Plants/sunflower/Sunflower0005.png'),
+            'Cherry Bomb': pygame.image.load('animations/Plants/cherrybomb/Cherrybomb0015.png'),
+            'Wall Nut': pygame.image.load('animations/Plants/wallnut/Wallnut0001.png'),
+            'Potato Mine': pygame.image.load('animations/Plants/potatomine/PotatoMine0021.png'),
+            'Snow Pea': pygame.image.load('animations/Plants/snowpea/SnowPea0080.png'),
+            'Chomper': pygame.image.load('animations/Plants/chomper/Chomper0001.png'),
+            'Repeater': pygame.image.load('animations/Plants/repeater/Repeater0080.png'),
+            'Lily Pad': pygame.image.load('animations/Plants/lilypad/LilyPad0001.png'),
         }
 
-        # Scale background to fit screen height, keeping aspect ratio
-        self.bg_scale_factor = self.height / background_image.get_height()
-        scaled_bg_width = int(background_image.get_width() * self.bg_scale_factor)
-        scaled_bg_height = self.height
-        # Tile the background to make it wider for scrolling animations
-        tile_count = 3  # Tile 3 times to ensure enough width for scrolling
-        total_width = scaled_bg_width * tile_count
-        self.scaled_background = pygame.Surface((total_width, scaled_bg_height))
-        for i in range(tile_count):
-            self.scaled_background.blit(pygame.transform.scale(background_image, (scaled_bg_width, scaled_bg_height)), (i * scaled_bg_width, 0))
+        # Load background
+        self.load_background()
 
         # Create scaler for UI elements
         self.scaler = SimpleWindowScaler(BASE_WIDTH, BASE_HEIGHT, self.width, self.height)
@@ -1174,10 +1167,12 @@ class Game:
 
         # Initialize states
         self.main_menu = MainMenu(self)
-        self.seed_select = SeedSelect(self)
-        self.main_game = MainGame(self)
+        self.seed_select = SeedSelect(self, self.levels[self.selected_level]['background'], self.levels[self.selected_level]['banned_plants'])
+        self.main_game = MainGame(self, self.selected_level)
         self.pause_menu = None
         self.welcome_screen = WelcomeScreen(self)
+        preload_ui()
+        self.menu = Menu(self)
         self.state = 'welcome'
         self.sound_manager.play_music('menu')
 
@@ -1206,6 +1201,19 @@ class Game:
         self.update_queue = queue.Queue()
         self.update_thread = None
         self.thread_running = True
+
+
+    def load_background(self):
+        background_image = pygame.image.load("images/"+self.levels[self.selected_level]['background'])
+        self.bg_scale_factor = self.height / background_image.get_height()
+        scaled_bg_width = int(background_image.get_width() * self.bg_scale_factor)
+        scaled_bg_height = self.height
+        # Tile the background to make it wider for scrolling animations
+        tile_count = 3  # Tile 3 times to ensure enough width for scrolling
+        total_width = scaled_bg_width * tile_count
+        self.scaled_background = pygame.Surface((total_width, scaled_bg_height))
+        for i in range(tile_count):
+            self.scaled_background.blit(pygame.transform.scale(background_image, (scaled_bg_width, scaled_bg_height)), (i * scaled_bg_width, 0))
 
     def draw_background(self, screen, offset_x):
         width_to_blit = min(self.width, self.scaled_background.get_width())
@@ -1294,12 +1302,16 @@ class Game:
                     self.almanac.update(event)
                 elif self.state == 'welcome':
                     pass  # no events needed
+                elif self.state == 'level_menu':
+                    self.menu.handle_events([event])
 
             # Update animations
             if self.state == 'menu':
                 self.main_menu.update_animation(dt)
             elif self.state == 'welcome':
                 self.welcome_screen.update(dt)
+            elif self.state == 'almanac':
+                self.almanac.update_animation(dt)
 
             if self.state == 'game':
                 # Start update thread if not running
@@ -1339,6 +1351,8 @@ class Game:
                     self.almanac.draw()
                 elif self.state == 'welcome':
                     self.welcome_screen.draw(self.screen)
+                elif self.state == 'level_menu':
+                    self.menu.draw(self.screen)
             pygame.display.flip()
             self.sound_manager.play_music(self.state)
 
