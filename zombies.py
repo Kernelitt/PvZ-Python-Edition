@@ -8,14 +8,14 @@ class Zombie:
     def __init__(self, z_type, lane, scaler, game_field):
         self.z_type = z_type
         self.lane = lane
+        self.game_field = game_field
         self.x = scaler.scale_x(BASE_WIDTH)
-        self.y = scaler.scale_y(160 + lane * ((1025 - 160) / 5) + ((1025 - 160) / 5) / 2 - 50)
+        self.y = scaler.scale_y(160 + lane * self.game_field.cell_height + self.game_field.cell_height / 2 - 50)
         self.normal_speed = 45 * 1 + random.choice([-1,1]) / 10
         self.speed = self.normal_speed
         self.health = ZOMBIE_HEALTH.get(z_type + ' Health', 270)
         self.cone_health = 0
         self.bucket_health = 0
-        self.game_field = game_field
         self.attack_sound_index = random.randint(0, 1)
         self.last_sound_time = 0.0
         self.slow_timer = 0.0
@@ -72,7 +72,8 @@ class Zombie:
         # Find the rightmost plant in the lane ahead
         target_col = None
         for col in range(self.game_field.cols - 1, -1, -1):
-            if self.game_field.grid[self.lane][col] is not None:
+            cell = self.game_field.grid[self.lane][col]
+            if cell['plant'] is not None or cell['base'] is not None:
                 plant_x = self.game_field.field_x + col * self.game_field.cell_width
                 if self.x > plant_x:
                     target_col = col
@@ -98,11 +99,15 @@ class Zombie:
                 if self.last_sound_time > 0.75:
                     self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
                     self.last_sound_time = 0.0
-                plant = self.game_field.grid[self.lane][target_col]
+                cell = self.game_field.grid[self.lane][target_col]
+                plant = cell['plant'] if cell['plant'] is not None else cell['base']
                 if hasattr(plant, 'health'):
                     plant.health -= 1
                     if plant.health <= 0:
-                        self.game_field.grid[self.lane][target_col] = None
+                        if cell['plant'] is not None:
+                            cell['plant'] = None
+                        else:
+                            cell['base'] = None
                         self.game_field.game.sound_manager.play_sound('plant_break')
         else:
             self.x -= self.speed * dt

@@ -67,7 +67,8 @@ class SoundManager:
             'zombie_death': 'sounds/splat.ogg',
             'zombie_attack1': 'sounds/chomp.ogg',
             'zombie_attack2': 'sounds/chomp2.ogg',
-            'plant_break': 'sounds/gulp.ogg'
+            'plant_break': 'sounds/gulp.ogg',
+            'cherrybomb': 'sounds/cherrybomb.ogg',
         }
         for name, path in sound_files.items():
             try:
@@ -120,18 +121,21 @@ class SoundManager:
 
 
 class GameField:
-    def __init__(self, scaler, width, height, game):
+    def __init__(self, scaler, width, height, game, level_data):
         self.game = game
         self.scaler = scaler
         self.screen_width = width
         self.screen_height = height
-        self.rows = 5
+        self.rows = level_data.get('rows', 5)
         self.cols = 9
         self.cell_width = self.scaler.scale_x((1770 - 450) / 9)  # Adjusted cell width
-        self.cell_height = self.scaler.scale_y((1025 - 160) / 5)  # Adjusted cell height
+        bottom_y = 1025 + (60 if self.rows == 6 else 0)
+        self.cell_height = self.scaler.scale_y((bottom_y - 160) / self.rows)  # Adjusted cell height
         self.field_x = self.scaler.scale_x(450)  # Top-left x
         self.field_y = self.scaler.scale_y(160)  # Top-left y
-        self.grid = [[None for _ in range(self.cols)] for _ in range(self.rows)]  # Placeholder for plants
+        self.grid = [[{'base': None, 'plant': None} for _ in range(self.cols)] for _ in range(self.rows)]
+        self.water_rows = level_data.get('water_rows', [])
+        self.water_only_plants = set(WATER_ONLY_PLANTS)
         self.plant_classes = {
             'Peashooter': Peashooter,
             'Sunflower': Sunflower,
@@ -153,9 +157,15 @@ class GameField:
             for col in range(self.cols):
                 x = self.field_x + col * self.cell_width
                 y = self.field_y + row * self.cell_height
-                pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
-                # Draw plant if present
-                plant = self.grid[row][col]
+                if row in self.water_rows:
+                    pygame.draw.rect(screen, (0, 0, 255), (x, y, self.cell_width, self.cell_height), 2)  # Blue border for water
+                else:
+                    pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
+                # Draw base and plant if present
+                base = self.grid[row][col]['base']
+                plant = self.grid[row][col]['plant']
+                if base:
+                    base.draw(screen)
                 if plant:
                     if hasattr(plant, 'draw'):
                         plant.draw(screen)
@@ -174,31 +184,72 @@ class GameField:
                     if self.game.main_game.seed_recharge_timers[selected_plant['name']] > 0:
                         print("Seed is recharging!")
                         return
-                    # Plant in the cell if empty
-                    if self.grid[row][col] is None:
-                        sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
-                        if self.game.main_game.sun_count >= sun_cost:
-                            self.game.main_game.sun_count -= sun_cost
-                            plant_class = self.plant_classes.get(selected_plant['name'])
-                            if plant_class:
+                # Check planting restrictions
+                sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
+                if self.game.main_game.sun_count >= sun_cost:
+                    self.game.main_game.sun_count -= sun_cost
+                    if row in self.water_rows:
+                        if selected_plant['name'] == 'Lily Pad':
+                            if self.grid[row][col]['base'] is None:
+                                plant_class = self.plant_classes.get(selected_plant['name'])
                                 x_pos = self.field_x + col * self.cell_width + 5
                                 y_pos = self.field_y + row * self.cell_height + 5
                                 plant = plant_class(x_pos, y_pos, self.game, row)
-                                self.grid[row][col] = plant
+                                self.grid[row][col]['base'] = plant
                                 self.game.sound_manager.play_sound('plant')
                                 print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                                self.game.main_game.selected_seed = None
                             else:
-                                health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
-                                self.grid[row][col] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
-                                self.game.sound_manager.play_sound('plant')
-                                print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                            # Reset recharge timer
-                            self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
-                            self.game.main_game.selected_seed = None
+                                print("Already has base!")
                         else:
-                            print("Not enough sun!")
+                            if self.grid[row][col]['base'] is not None:
+                                if self.grid[row][col]['plant'] is None:
+                                    plant_class = self.plant_classes.get(selected_plant['name'])
+                                    if plant_class:
+                                        x_pos = self.field_x + col * self.cell_width + 5
+                                        y_pos = self.field_y + row * self.cell_height + 5
+                                        plant = plant_class(x_pos, y_pos, self.game, row)
+                                        self.grid[row][col]['plant'] = plant
+                                        self.game.sound_manager.play_sound('plant')
+                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                    else:
+                                        health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
+                                        self.grid[row][col]['plant'] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
+                                        self.game.sound_manager.play_sound('plant')
+                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                    self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                                    self.game.main_game.selected_seed = None
+                                else:
+                                    print("Cell is occupied!")
+                            else:
+                                print("Need Lily Pad first!")
+                    else:
+                        if selected_plant['name'] in self.water_only_plants:
+                            print("Can only plant on water!")
+                        else:
+                            if self.grid[row][col]['plant'] is None:
+                                plant_class = self.plant_classes.get(selected_plant['name'])
+                                if plant_class:
+                                    x_pos = self.field_x + col * self.cell_width + 5
+                                    y_pos = self.field_y + row * self.cell_height + 5
+                                    plant = plant_class(x_pos, y_pos, self.game, row)
+                                    self.grid[row][col]['plant'] = plant
+                                    self.game.sound_manager.play_sound('plant')
+                                    print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                else:
+                                    health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
+                                    self.grid[row][col]['plant'] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
+                                    self.game.sound_manager.play_sound('plant')
+                                    print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                                self.game.main_game.selected_seed = None
+                            else:
+                                print("Cell is occupied!")
                 else:
-                    print(f"Clicked on cell ({row}, {col}) - No plant selected")
+                    print("Not enough sun!")
+            else:
+                print(f"Clicked on cell ({row}, {col}) - No plant selected")
 
 class MainMenu:
     def __init__(self, game):
@@ -631,13 +682,13 @@ class MainGame:
     def __init__(self, game, level_name):
         self.game = game
         self.level_data = game.levels[level_name]
-        self.game_field = GameField(game.scaler, game.width, game.height, game)
+        self.game_field = GameField(game.scaler, game.width, game.height, game, self.level_data)
         self.sun_count = self.level_data['start_sun']
         self.selected_seed = None
         self.hotbar_height = game.scaler.scale_y(100 * 2)
         self.wave_number = 1
         self.wave_points = 1
-        self.initial_timer = 5.0  # 5 seconds
+        self.initial_timer = 15.0  # 5 seconds
         self.zombies = []
         self.current_wave_zombies = []
         self.wave_active = False
@@ -649,7 +700,7 @@ class MainGame:
         self.game_won = False
         self.sky_suns = []
         self.sky_sun_timer = 0.0
-        self.sky_sun_interval = random.uniform(10.0, 15.0)
+        self.sky_sun_interval = random.uniform(7.5, 10.0)
         # Initialize seed recharge timers as mutable dict with 0 (ready) for each plant
         self.seed_recharge_timers = {plant: 0 for plant in PLANT_RECHARGE}
 
@@ -729,7 +780,7 @@ class MainGame:
                 # Check if clicked on any suns to collect
                 for row in range(self.game_field.rows):
                     for col in range(self.game_field.cols):
-                        plant = self.game_field.grid[row][col]
+                        plant = self.game_field.grid[row][col]['plant']
                         if plant and hasattr(plant, 'suns'):
                             for sun in plant.suns:
                                 if sun.rect.collidepoint(event.pos) and not sun.collected:
@@ -770,7 +821,7 @@ class MainGame:
         # Update suns from all sunflowers
         for row in range(self.game_field.rows):
             for col in range(self.game_field.cols):
-                plant = self.game_field.grid[row][col]
+                plant = self.game_field.grid[row][col]['plant']
                 if plant and hasattr(plant, 'suns'):
                     for sun in plant.suns:
                         sun.update(dt)
@@ -785,7 +836,7 @@ class MainGame:
         # Update plants
         for row in range(self.game_field.rows):
             for col in range(self.game_field.cols):
-                plant = self.game_field.grid[row][col]
+                plant = self.game_field.grid[row][col]['plant']
                 if plant and hasattr(plant, 'update'):
                     if isinstance(plant, (Peashooter, SnowPea)):
                         plant.update(dt, self.zombies)
@@ -795,7 +846,7 @@ class MainGame:
         # Remove collected suns from sunflowers
         for row in range(self.game_field.rows):
             for col in range(self.game_field.cols):
-                plant = self.game_field.grid[row][col]
+                plant = self.game_field.grid[row][col]['plant']
                 if plant and hasattr(plant, 'suns'):
                     plant.suns = [s for s in plant.suns if not s.collected]
 
@@ -816,7 +867,7 @@ class MainGame:
         for zombie in self.zombies:
             for row in range(self.game_field.rows):
                 for col in range(self.game_field.cols):
-                    plant = self.game_field.grid[row][col]
+                    plant = self.game_field.grid[row][col]['plant']
                     if plant and hasattr(plant, 'projectiles'):
                         for projectile in plant.projectiles[:]:
                             if projectile.collides_with(zombie):
@@ -826,6 +877,10 @@ class MainGame:
                                     zombie.cone_health -= projectile.damage
                                     if zombie.cone_health <= 0:
                                         zombie.cone_health = 0
+                                if zombie.bucket_health > 0:
+                                    zombie.bucket_health -= projectile.damage
+                                    if zombie.bucket_health <= 0:
+                                        zombie.bucket_health = 0
                                 else:
                                     zombie.health -= projectile.damage
                                 plant.projectiles.remove(projectile)
@@ -846,7 +901,7 @@ class MainGame:
         self.current_wave_zombies = [z for z in self.current_wave_zombies if z in self.zombies]
 
         # Check wave end conditions
-        total_hp = sum(z.health + z.cone_health for z in self.current_wave_zombies)
+        total_hp = sum(z.health + z.cone_health + z.bucket_health for z in self.current_wave_zombies)
         self.wave_timer += dt
 
         # Wave ends if total HP < 50% initial or 25 seconds passed
@@ -886,7 +941,7 @@ class MainGame:
         random.shuffle(zombies_to_spawn)
 
         for i, z_type in enumerate(zombies_to_spawn):
-            lane = random.randint(0,4)
+            lane = random.randint(0, self.game_field.rows - 1)
             zombie = Zombie(z_type, lane, self.game.scaler, self.game_field)
             self.zombies.append(zombie)
             self.current_wave_zombies.append(zombie)
@@ -947,7 +1002,7 @@ class MainGame:
             # draw plant names
             for row in range(self.game_field.rows):
                 for col in range(self.game_field.cols):
-                    plant = self.game_field.grid[row][col]
+                    plant = self.game_field.grid[row][col]['plant']
                     if plant:
                         x = self.game_field.field_x + col * self.game_field.cell_width + self.game_field.cell_width // 2
                         y = self.game_field.field_y + row * self.game_field.cell_height + self.game_field.cell_height // 2
@@ -1033,16 +1088,28 @@ class Menu:
         # level buttons
         self.level_buttons = []
         LEVEL_DATA = json.load(open('levels.json'))
-        positions = [(200, 200), (400, 200), (600, 200), (800, 200)]  # for 4 levels
+        max_per_row = 10
+        spacing_x = 200
+        spacing_y = 200
+        start_x = 200
+        start_y = 200
         for i, (level_key, level_data) in enumerate(LEVEL_DATA.items()):
+            row = i // max_per_row
+            col = i % max_per_row
+            x = start_x + col * spacing_x
+            y = start_y + row * spacing_y
             if 'background1.png' in level_data['background']:
                 icon_index = 0  # day
             elif 'background2.png' in level_data['background']:
                 icon_index = 1  # night
+            if 'background3.png' in level_data['background']:
+                icon_index = 2  # day
+            elif 'background4.png' in level_data['background']:
+                icon_index = 3  # night
             else:
                 icon_index = 0
             button = {
-                'rect': pygame.Rect(positions[i][0], positions[i][1], self.window_image.get_width(), self.window_image.get_height()),
+                'rect': pygame.Rect(x, y, self.window_image.get_width(), self.window_image.get_height()),
                 'level': level_key,
                 'icon': self.thumbnails_list[icon_index],
                 'hovered': False

@@ -264,8 +264,8 @@ class CherryBomb(Plant):
                         if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
                             zombie.health -= damage
         # Remove plant from grid
-        self.game.main_game.game_field.grid[self.row][plant_col] = None
-        self.game.sound_manager.play_sound('plant_break')  # or explosion sound if available
+        self.game.main_game.game_field.grid[self.row][plant_col]['plant'] = None
+        self.game.sound_manager.play_sound('cherrybomb')  # or explosion sound if available
 
     def draw(self, screen):
         if self.exploded:
@@ -351,7 +351,7 @@ class PotatoMine(Plant):
                         if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
                             zombie.health -= damage
         # Remove plant from grid
-        self.game.main_game.game_field.grid[self.row][plant_col] = None
+        self.game.main_game.game_field.grid[self.row][plant_col]['plant'] = None
         self.game.sound_manager.play_sound('plant_break')
 
     def draw(self, screen):

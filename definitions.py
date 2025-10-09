@@ -201,6 +201,8 @@ PROJECTILE_TEXTURES_PATH = {
 }
 
 WAVE_OPTIONS = {
-    "Every": 1,
-    "Points":8
+    "Every": 2,
+    "Points":2
 }
+
+WATER_ONLY_PLANTS = ['Lily Pad']

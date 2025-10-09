@@ -4,6 +4,18 @@
 # Adjust the ranges based on your actual frame sequences.
 
 ZOMBIE_ANIMATIONS = {
+    'idle1': {
+        'start_frame': 46,
+        'end_frame': 92,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
+    'idle2': {
+        'start_frame': 46,
+        'end_frame': 92,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },    
     'walk': {
         'start_frame': 46,
         'end_frame': 92,

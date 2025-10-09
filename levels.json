@@ -3,7 +3,7 @@
     "name": "Day 1",
     "background": "background1.png",
     "waves": 10,
-    "start_sun": 200,
+    "start_sun": 2000,
     "zombies": ["Basic Zombie"],
     "banned_plants": []
   },
@@ -30,5 +30,45 @@
     "start_sun": 50,
     "zombies": ["Basic Zombie"],
     "banned_plants": []
+  },
+  "3-1": {
+    "name": "Pool 1",
+    "background": "background3.png",
+    "waves": 10,
+    "start_sun": 50,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": [],
+    "water_rows": [2, 3],
+    "rows": 6
+  },
+  "3-2": {
+    "name": "Pool 2",
+    "background": "background3.png",
+    "waves": 20,
+    "start_sun": 50,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": [],
+    "water_rows": [2, 3],
+    "rows": 6
+  },
+  "4-1": {
+    "name": "Fog 1",
+    "background": "background4.png",
+    "waves": 10,
+    "start_sun": 50,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": [],
+    "water_rows": [2, 3],
+    "rows": 6
+  },
+  "4-2": {
+    "name": "Fog 2",
+    "background": "background4.png",
+    "waves": 20,
+    "start_sun": 5000,
+    "zombies": ["Basic Zombie"],
+    "banned_plants": [],
+    "water_rows": [2, 3],
+    "rows": 6
   }
 }
