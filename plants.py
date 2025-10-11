@@ -38,6 +38,7 @@ class Plant:
         self.x = x
         self.y = y
         self.name = name
+
         self.game = game
         self.row = row
         self.health = PLANT_HEALTH.get(name, PLANT_HEALTH.get("Basic Plants", 300))
@@ -45,10 +46,10 @@ class Plant:
         self.recharge = PLANT_RECHARGE.get(name, 750) * 10 / 1000.0  # convert ms to seconds (multiply by 10 as per comment)
         self.last_action_time = 0
         self.projectiles = []
-
+        self.damage_flash_timer = 0.0
+        self.rect = pygame.Rect(self.x, self.y, 80, 80)
     def update(self, dt):
-        # Base plant does nothing
-        pass
+        self.damage_flash_timer = max(0, self.damage_flash_timer - dt)
 
     def draw(self, screen):
         # Placeholder: draw a rectangle for the plant
@@ -56,6 +57,7 @@ class Plant:
 
     def take_damage(self, amount):
         self.health -= amount
+        self.damage_flash_timer = 0.2  # Flash for 0.2 seconds
         if self.health <= 0:
             self.health = 0
             # Remove plant from game grid or mark dead
@@ -64,6 +66,7 @@ class Plant:
 class Peashooter(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x-30, y, "Peashooter", game, row)
+        self.rect.x = self.x
         self.projectile_speed = 480  # pixels per second
         self.damage = PLANT_DAMAGE.get("Pea", 20)
         self.fire_rate = PLANT_TIMERS.get("Peashooter Fire Rate", 1500) / 1000.0  # convert ms to seconds
@@ -106,7 +109,7 @@ class Peashooter(Plant):
                     self.current_action = 'shoot'
                     self.shoot_frame_index = 0
                     self.shoot_timer = 0.0
-                    self.shoot_bottom_frame_index = self.idle_frame_index  # start from current idle frame
+                    self.shoot_bottom_frame_index = self.idle_frame_index
                     self.shooting_second = False
                     self.shoot()
                     self.last_action_time = current_time
@@ -144,22 +147,21 @@ class Peashooter(Plant):
                     self.current_action = 'idle'
                     self.shoot_frame_index = 0
 
+
         # Update projectiles
         for projectile in self.projectiles:
             projectile.update(dt)
         # Remove inactive projectiles
         self.projectiles = [p for p in self.projectiles if p.active]
+        super().update(dt)
 
     def shoot(self):
-        # Create a new projectile starting at plant's position
-        proj_x = self.x + 50  # start at right edge of plant
-        proj_y = self.y + 35  # roughly middle height of plant
+        proj_x = self.x + 50
+        proj_y = self.y + 35
         new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
         self.projectiles.append(new_proj)
         self.game.sound_manager.play_sound('throw')
-        if not self.shooting_second:
-            self.shooting_second = True
-            self.second_shot_timer = 0.5
+
 
     def draw(self, screen):
         if self.current_action == 'idle':
@@ -173,6 +175,14 @@ class Peashooter(Plant):
             frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
             shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
             frame.blit(shoot_top_frame, (0,0))
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (180, 180))
         screen.blit(scaled_frame, (self.x, self.y))
         # Draw projectiles
@@ -185,6 +195,7 @@ class Sunflower(Plant):
         self.sun_production_rate = PLANT_TIMERS.get("Sunflower Production Rate", 24000) / 1000.0  # 24 seconds
         self.sun_timer = 0.0
         self.suns = []  # List to hold spawned suns
+        self.first_sun = True  # Flag for faster first sun production
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -196,8 +207,9 @@ class Sunflower(Plant):
 
     def update(self, dt):
         # Produce sun
+        effective_rate = self.sun_production_rate / 2 if self.first_sun else self.sun_production_rate
         self.sun_timer += dt
-        if self.sun_timer >= self.sun_production_rate:
+        if self.sun_timer >= effective_rate:
             # Spawn a sun object instead of directly adding to sun_count
             sun_x = self.x + 50  # Position relative to sunflower
             sun_y = self.y + 20
@@ -205,6 +217,8 @@ class Sunflower(Plant):
             self.suns.append(new_sun)
             self.game.sound_manager.play_sound('sun')
             self.sun_timer = 0.0
+            if self.first_sun:
+                self.first_sun = False
 
         # Update suns
         for sun in self.suns:
@@ -217,8 +231,18 @@ class Sunflower(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x-20, self.y))
         # Draw suns
@@ -254,6 +278,8 @@ class CherryBomb(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def explode(self):
         self.exploded = True
         damage = PLANT_DAMAGE.get("CherryBomb", 1800)
@@ -277,6 +303,14 @@ class CherryBomb(Plant):
         if self.exploded:
             return
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (200, 200))
         screen.blit(scaled_frame, (self.x, self.y))
 
@@ -300,8 +334,18 @@ class WallNut(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 
@@ -346,6 +390,8 @@ class PotatoMine(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def explode(self):
         self.exploded = True
         damage = PLANT_DAMAGE.get("PotatoMine", 1800)
@@ -366,6 +412,14 @@ class PotatoMine(Plant):
         if self.exploded:
             return
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 
@@ -455,6 +509,8 @@ class SnowPea(Plant):
             projectile.update(dt)
         self.projectiles = [p for p in self.projectiles if p.active]
 
+        super().update(dt)
+
     def shoot(self):
         proj_x = self.x + 50
         proj_y = self.y + 35
@@ -473,6 +529,14 @@ class SnowPea(Plant):
             frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
             shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
             frame.blit(shoot_top_frame, (0,0))
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (180, 180))
         screen.blit(scaled_frame, (self.x, self.y))
         # Draw projectiles
@@ -499,8 +563,18 @@ class Chomper(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (200, 200))
         screen.blit(scaled_frame, (self.x, self.y))
 
@@ -512,6 +586,8 @@ class Repeater(Plant):
         self.fire_rate = PLANT_TIMERS.get("Repeater Fire Rate", 1500) / 1000.0  # convert ms to seconds
         # Load projectile image
         self.projectile_image = pygame.image.load(PROJECTILE_TEXTURES_PATH["Pea"]).convert_alpha()
+        self.shooting_second = False
+        self.second_shot_timer = 0.0
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -549,7 +625,7 @@ class Repeater(Plant):
                     self.current_action = 'shoot'
                     self.shoot_frame_index = 0
                     self.shoot_timer = 0.0
-                    self.shoot_bottom_frame_index = self.idle_frame_index  # start from current idle frame
+                    self.shoot_bottom_frame_index = self.idle_frame_index
                     self.shooting_second = False
                     self.shoot()
                     self.last_action_time = current_time
@@ -583,11 +659,20 @@ class Repeater(Plant):
             if self.shoot_timer >= 1.0 / shoot_fps:
                 self.shoot_timer -= 1.0 / shoot_fps
                 self.shoot_frame_index += 1
-                if self.shoot_frame_index == 54:
-                    self.shoot()
                 if self.shoot_frame_index >= len(self.animation_frames['shoot']):
                     self.current_action = 'idle'
                     self.shoot_frame_index = 0
+
+        if self.shooting_second:
+            self.second_shot_timer -= dt
+            if self.second_shot_timer <= 0:
+                # shoot second
+                proj_x = self.x + 50
+                proj_y = self.y + 35
+                new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
+                self.projectiles.append(new_proj)
+                self.game.sound_manager.play_sound('throw')
+                self.shooting_second = False
 
         # Update projectiles
         for projectile in self.projectiles:
@@ -595,12 +680,18 @@ class Repeater(Plant):
         # Remove inactive projectiles
         self.projectiles = [p for p in self.projectiles if p.active]
 
+        super().update(dt)
+
     def shoot(self):
-        # Create a new projectile starting at plant's position
-        proj_x = self.x + 50  # start at right edge of plant
-        proj_y = self.y + 35  # roughly middle height of plant
+        # First shot
+        proj_x = self.x + 50
+        proj_y = self.y + 35
         new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
         self.projectiles.append(new_proj)
+        self.game.sound_manager.play_sound('throw')
+        # Set up second shot
+        self.shooting_second = True
+        self.second_shot_timer = 0.3  # 150 ms delay for second shot
 
     def draw(self, screen):
         if self.current_action == 'idle':
@@ -614,6 +705,14 @@ class Repeater(Plant):
             frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
             shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
             frame.blit(shoot_top_frame, (0,0))
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (180, 180))
         screen.blit(scaled_frame, (self.x, self.y))
         # Draw projectiles
@@ -640,24 +739,48 @@ class LilyPad(Plant):
             self.blink_timer -= 1.0 / blink_fps
             self.blink_frame_index = (self.blink_frame_index + 1) % len(self.animation_frames['blink'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['blink'][self.blink_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 
 class PuffShroom(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x, y, "Puff Shroom", game, row)
+        self.projectiles = []
+        self.projectile_speed = 480
+        self.damage = PLANT_DAMAGE.get("Puffshroom", 20)
+        self.fire_rate = PLANT_TIMERS.get("Puffshroom Fire Rate", 1500) / 1000.0
+        self.projectile_image = pygame.image.load(PROJECTILE_TEXTURES_PATH["Spore"]).convert_alpha()
 
         # Use preloaded animation frames
         self.animation_frames = {}
         for action in PUFF_SHROOM_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'puff_shroom_{action}']
+            self.animation_frames[action] = preloaded_images[f'puffshroom_{action}']
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
 
-    def update(self, dt):
+    def update(self, dt, zombies):
+        # Check for targets within 3 cells
+        cell_width = self.game.main_game.game_field.cell_width
+        has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x and z.x - self.x <= 3 * cell_width)
+        if has_target:
+            current_time = time.time()
+            if current_time - self.last_action_time >= self.fire_rate:
+                self.shoot()
+                self.last_action_time = current_time
+
         # Update idle animation
         self.idle_timer += dt
         idle_fps = PUFF_SHROOM_ANIMATIONS['idle']['fps']
@@ -665,10 +788,35 @@ class PuffShroom(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        # Update projectiles
+        for projectile in self.projectiles:
+            projectile.update(dt)
+        self.projectiles = [p for p in self.projectiles if p.active]
+
+        super().update(dt)
+
+    def shoot(self):
+        proj_x = self.x + 50
+        proj_y = self.y + 35
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='puff')
+        self.projectiles.append(new_proj)
+        self.game.sound_manager.play_sound('throw')
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
+        # Draw projectiles
+        for projectile in self.projectiles:
+            projectile.draw(screen)
 
 class SunShroom(Plant):
     def __init__(self, x, y, game, row):
@@ -690,8 +838,18 @@ class SunShroom(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 
@@ -715,8 +873,18 @@ class FumeShroom(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 
@@ -740,8 +908,18 @@ class GraveBuster(Plant):
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
+        super().update(dt)
+
     def draw(self, screen):
         frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.damage_flash_timer > 0:
+            frame = frame.copy()
+            tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = pygame.surfarray.pixels_alpha(tint)
+            frame_alpha = pygame.surfarray.pixels_alpha(frame)
+            tint_alpha[:] = frame_alpha
+            frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
 

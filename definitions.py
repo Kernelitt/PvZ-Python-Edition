@@ -198,7 +198,8 @@ PROJECTILE_TEXTURES_PATH = {
     "Cabbage":"images/Cabbagepult_cabbage.png",
     "Kernel":"images/Cornpult_butter.png",
     "Butter":"images/Cornpult_kernal.png",
-    "Melon":"images/Melonpult_melon.png",    
+    "Melon":"images/Melonpult_melon.png",   
+    "Spore":"particles/PuffShroom_puff1.png" 
 }
 
 WAVE_OPTIONS = {

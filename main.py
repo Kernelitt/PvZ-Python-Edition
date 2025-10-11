@@ -265,6 +265,16 @@ class GameField:
                 else:
                     print(f"Clicked on cell ({row}, {col}) - No plant selected")
 
+    def remove_plant(self, pos):
+        x, y = pos
+        if self.field_x <= x < self.field_x + self.cols * self.cell_width and self.field_y <= y < self.field_y + self.rows * self.cell_height:
+            col = (x - self.field_x) // self.cell_width
+            row = (y - self.field_y) // self.cell_height
+            if 0 <= row < self.rows and 0 <= col < self.cols:
+                if self.grid[row][col] is not None:
+                    self.grid[row][col] = None
+                    print(f"Removed plant at cell ({row}, {col})")
+
 class MainMenu:
     def __init__(self, game):
         self.game = game
@@ -728,8 +738,10 @@ class MainGame:
         self.sky_suns = []
         self.sky_sun_timer = 0.0
         self.sky_sun_interval = random.uniform(10.0, 15.0)
+        self.sky_sun_timer = self.sky_sun_interval  # Start falling immediately
         # Initialize seed recharge timers as mutable dict with 0 (ready) for each plant
         self.seed_recharge_timers = {plant: 0 for plant in PLANT_RECHARGE}
+        self.selected_shovel = False
 
     def draw_hotbar(self, screen):
         # Draw hotbar background image
@@ -786,42 +798,72 @@ class MainGame:
                 pygame.draw.rect(screen, (255, 255, 200), bg_rect)
                 screen.blit(name_text, (rect.x + 5, rect.y + seed_h + self.game.scaler.scale_y(5 * 2) + 5))
 
+        # Draw shovel
+        shovel_x = seed_x_start + len(self.game.seed_packets) * (seed_w + offset) + 50
+        shovel_rect = pygame.Rect(shovel_x, seed_y, 140, 144)
+        scaled_shovel_bank = pygame.transform.scale(self.game.shovel_bank_image, (140, 144))
+        screen.blit(scaled_shovel_bank, shovel_rect)
+        scaled_shovel_icon = pygame.transform.scale(self.game.shovel_image, (120, 120))
+        icon_rect = scaled_shovel_icon.get_rect(center=shovel_rect.center)
+        screen.blit(scaled_shovel_icon, icon_rect)
+        if self.selected_shovel:
+            pygame.draw.rect(screen, "#FFFFFF", shovel_rect, 4)
+        else:
+            pygame.draw.rect(screen, (0, 0, 0), shovel_rect, 4)
+
     def update(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mouse_x, mouse_y = event.pos
-            if 0 <= mouse_y <= self.hotbar_height:
-                seed_x_start = self.game.scaler.scale_x(80 * 2)
-                seed_y = self.game.scaler.scale_y(10 * 2)
-                seed_w = self.game.scaler.scale_x(45 * 2)
-                seed_h = self.game.scaler.scale_y(65 * 2)
-                offset = self.game.scaler.scale_x(5 * 2)
-                for i in range(len(self.game.seed_packets)):
-                    rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
-                    if rect.collidepoint(event.pos):
-                        if self.seed_recharge_timers[self.game.seed_packets[i]['name']] > 0:
-                            continue
-                        self.selected_seed = i
-                        print(f"Selected seed: {self.game.seed_packets[i]['name']}")
-                        break
-            else:
-                # Check if clicked on any suns to collect
-                for row in range(self.game_field.rows):
-                    for col in range(self.game_field.cols):
-                        plant = self.game_field.grid[row][col]
-                        if plant and hasattr(plant, 'suns'):
-                            for sun in plant.suns:
-                                if sun.rect.collidepoint(event.pos) and not sun.collected:
-                                    sun.collect()
-                                    break
-                # Check sky suns
-                for sun in self.sky_suns:
-                    if sun.rect.collidepoint(event.pos) and not sun.collected:
-                        sun.collect()
-                        break
-                # Plant on game field
-                if self.selected_seed is not None:
-                    plant = self.game.seed_packets[self.selected_seed]
-                    self.game_field.handle_click(event.pos, plant)
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                mouse_x, mouse_y = event.pos
+                if 0 <= mouse_y <= self.hotbar_height:
+                    seed_x_start = self.game.scaler.scale_x(80 * 2)
+                    seed_y = self.game.scaler.scale_y(10 * 2)
+                    seed_w = self.game.scaler.scale_x(45 * 2)
+                    seed_h = self.game.scaler.scale_y(65 * 2)
+                    offset = self.game.scaler.scale_x(5 * 2)
+                    for i in range(len(self.game.seed_packets)):
+                        rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
+                        if rect.collidepoint(event.pos):
+                            if self.seed_recharge_timers[self.game.seed_packets[i]['name']] > 0:
+                                continue
+                            self.selected_seed = i
+                            self.selected_shovel = False
+                            print(f"Selected seed: {self.game.seed_packets[i]['name']}")
+                            break
+                    # Check shovel click
+                    shovel_x = seed_x_start + len(self.game.seed_packets) * (seed_w + offset)
+                    shovel_rect = pygame.Rect(shovel_x, seed_y, 140, 144)
+                    if shovel_rect.collidepoint(event.pos):
+                        self.selected_shovel = True
+                        self.game.sound_manager.play_sound('shovel')
+                        self.selected_seed = None
+                        print("Selected shovel")
+                else:
+                    # Check if clicked on any suns to collect
+                    for row in range(self.game_field.rows):
+                        for col in range(self.game_field.cols):
+                            plant = self.game_field.grid[row][col]
+                            if plant and hasattr(plant, 'suns'):
+                                for sun in plant.suns:
+                                    if sun.rect.collidepoint(event.pos) and not sun.collected:
+                                        sun.collect()
+                                        break
+                    # Check sky suns
+                    for sun in self.sky_suns:
+                        if sun.rect.collidepoint(event.pos) and not sun.collected:
+                            sun.collect()
+                            break
+                    # Plant on game field
+                    if self.selected_seed is not None:
+                        plant = self.game.seed_packets[self.selected_seed]
+                        self.game_field.handle_click(event.pos, plant)
+                    elif self.selected_shovel:
+                        self.game_field.remove_plant(event.pos)
+                        self.game.sound_manager.play_sound('plant1') if random.random() > 0.5 else self.game.sound_manager.play_sound('plant2')
+                        self.selected_shovel = False
+            elif event.button == 3:
+                self.selected_seed = None
+                self.selected_shovel = False
 
     def update_wave(self, dt):
         self.dt = dt
@@ -865,7 +907,7 @@ class MainGame:
             for col in range(self.game_field.cols):
                 plant = self.game_field.grid[row][col]
                 if plant and hasattr(plant, 'update'):
-                    if isinstance(plant, (Peashooter, SnowPea, Repeater)):
+                    if isinstance(plant, (Peashooter, SnowPea, Repeater,PuffShroom)):
                         plant.update(dt, self.zombies)
                     else:
                         plant.update(dt)
@@ -1008,12 +1050,37 @@ class MainGame:
             subsurface = self.game.scaled_background.subsurface((source_x, 0, width_to_blit, self.game.height))
             screen.blit(subsurface, (0, 0))
         self.game_field.draw(screen)
+        if self.selected_seed is not None:
+            mouse_pos = pygame.mouse.get_pos()
+            x, y = mouse_pos
+            if self.game_field.field_x <= x < self.game_field.field_x + self.game_field.cols * self.game_field.cell_width and self.game_field.field_y <= y < self.game_field.field_y + self.game_field.rows * self.game_field.cell_height:
+                col = (x - self.game_field.field_x) // self.game_field.cell_width
+                row = (y - self.game_field.field_y) // self.game_field.cell_height
+                if 0 <= row < self.game_field.rows and 0 <= col < self.game_field.cols:
+                    if self.game_field.grid[row][col] is None:
+                        plant_name = self.game.seed_packets[self.selected_seed]['name']
+                        cost = PLANT_SUN_COST.get(plant_name, 0)
+                        if self.sun_count >= cost:
+                            icon = self.game.plant_icons.get(plant_name)
+                            if icon:
+                                preview = icon.copy()
+                                preview.set_alpha(128)
+                                scaled_preview = pygame.transform.scale(preview, (int(self.game_field.cell_width * 0.8), int(self.game_field.cell_height * 0.8)))
+                                cell_x = self.game_field.field_x + col * self.game_field.cell_width
+                                cell_y = self.game_field.field_y + row * self.game_field.cell_height
+                                center_x = cell_x + (self.game_field.cell_width - scaled_preview.get_width()) // 2
+                                center_y = cell_y + (self.game_field.cell_height - scaled_preview.get_height()) // 2
+                                screen.blit(scaled_preview, (center_x, center_y))
         self.draw_hotbar(screen)
         self.draw_flag_meter(screen)
         for sun in self.sky_suns:
             sun.draw(screen)
         for zombie in self.zombies:
             zombie.draw(screen)
+        if self.selected_shovel:
+            mouse_pos = pygame.mouse.get_pos()
+            cursor_shovel = pygame.transform.scale(self.game.shovel_image, (40, 40))
+            screen.blit(cursor_shovel, (mouse_pos[0] - cursor_shovel.get_width() // 2, mouse_pos[1] - cursor_shovel.get_height() // 2))
         if self.debug_mode:
             # draw wave and points
             wave_text = self.game.small_font.render(f"Wave: {self.wave_number} Points: {self.wave_points}", True, (255, 255, 255))
@@ -1217,6 +1284,14 @@ class Game:
         seeds_image = pygame.image.load('images/seeds.png')
         # Extract the third seed image (0-indexed as 2)
         self.seed_image = seeds_image.subsurface((2 * 50, 0, 50, 70))
+
+        # Load shovel images
+        self.shovel_bank_image = pygame.image.load('images/ShovelBank.png')
+        self.shovel_image = pygame.image.load('images/Shovel.png')
+        # Scale shovel bank to match seed packet size (will be scaled per draw)
+        self.shovel_bank_image = pygame.transform.scale(self.shovel_bank_image, (50 * 1.8, 70 * 1.8))
+        # Scale shovel icon appropriately
+        self.shovel_image = pygame.transform.scale(self.shovel_image, (40 * 1.8, 40 * 1.8))
 
         # Load plant icons
         self.plant_icons = {

@@ -20,7 +20,7 @@ ZOMBIE_ANIMATIONS = {
         'start_frame': 179,
         'end_frame': 217,
         'loop': False,
-        'fps': 12
+        'fps': 24
     },
     # Add more animations as needed, e.g., 'idle', 'hurt', etc.
 }
@@ -54,7 +54,7 @@ PEASHOOTER_ANIMATIONS = {
         'start_frame': 1,
         'end_frame': 5,  # Adjust based on actual frames
         'loop': False,
-        'fps': 12
+        'fps': 24
     }
 }
 
@@ -129,7 +129,7 @@ SNOW_PEA_ANIMATIONS = {
         'start_frame': 1,
         'end_frame': 5,  # Adjust based on actual frames
         'loop': False,
-        'fps': 12
+        'fps': 24
     }
 }
 
@@ -176,10 +176,22 @@ REPEATER_ANIMATIONS = {
 }
 
 PUFF_SHROOM_ANIMATIONS = {
+    'blink': {
+        'start_frame': 1,
+        'end_frame': 4,
+        'loop': False,
+        'fps': 24
+    },
     'idle': {
         'start_frame': 5,
         'end_frame': 21,
         'loop': True,
+        'fps': 24
+    },
+    'shoot': {
+        'start_frame': 22,
+        'end_frame': 34,
+        'loop': False,
         'fps': 24
     }
 }
@@ -303,7 +315,7 @@ def get_animation_frames(action, anim_type='zombie'):
         anim = CHOMPER_ANIMATIONS[action]
     elif anim_type == 'repeater' and action in REPEATER_ANIMATIONS:
         anim = REPEATER_ANIMATIONS[action]
-    elif anim_type == 'puff_shroom' and action in PUFF_SHROOM_ANIMATIONS:
+    elif anim_type == 'puffshroom' and action in PUFF_SHROOM_ANIMATIONS:
         anim = PUFF_SHROOM_ANIMATIONS[action]
     elif anim_type == 'sun_shroom' and action in SUN_SHROOM_ANIMATIONS:
         anim = SUN_SHROOM_ANIMATIONS[action]

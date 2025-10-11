@@ -29,7 +29,7 @@ def preload_plant_animations():
         'chomper': ('chomper', CHOMPER_ANIMATIONS, 'Chomper'),
         'repeater': ('repeater', REPEATER_ANIMATIONS, 'Repeater'),
         'lilypad': ('lilypad', LILYPAD_ANIMATIONS, 'LilyPad'),
-        'puff_shroom': ('puffshroom', PUFF_SHROOM_ANIMATIONS, 'PuffShroom'),
+        'puffshroom': ('puffshroom', PUFF_SHROOM_ANIMATIONS, 'PuffShroom'),
         'sun_shroom': ('sun_shroom', SUN_SHROOM_ANIMATIONS, 'SunShroom'),
         'fume_shroom': ('fume_shroom', FUME_SHROOM_ANIMATIONS, 'FumeShroom'),
         'grave_buster': ('grave_buster', GRAVE_BUSTER_ANIMATIONS, 'GraveBuster'),
@@ -38,6 +38,7 @@ def preload_plant_animations():
         for action in anims:
             frames = get_animation_frames(action, anim_type)
             preloaded_images[f'{key}_{action}'] = [pygame.image.load(f'animations/Plants/{key.replace("_", "")}/{filename_prefix}{f:04d}.png').convert_alpha() for f in frames]
+
     # Preload sun animations
     frames = get_animation_frames('idle', 'sun')
     preloaded_images['sun_idle'] = [pygame.image.load(f'animations/sun/Sun{f:04d}.png').convert_alpha() for f in frames]

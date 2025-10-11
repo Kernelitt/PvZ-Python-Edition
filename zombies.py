@@ -3,6 +3,7 @@ import random
 from definitions import *
 from zombie_animations import get_animation_frames, ZOMBIE_ANIMATIONS
 from preloader import preloaded_images
+from pygame import surfarray
 
 class Zombie:
     def __init__(self, lane, scaler, game_field):
@@ -18,8 +19,13 @@ class Zombie:
         self.game_field = game_field
         self.attack_sound_index = random.randint(0, 1)
         self.last_sound_time = 0.0
+        self.damage_timer = 0.0
         self.slow_timer = 0.0
+        self.frozen_effect = False
+        self.damage_flash_timer = 0.0
         self.rect = pygame.Rect(self.x, self.y, 50, 100)
+        self.cone_rect = pygame.Rect(self.x, self.y, 50, 100)
+        self.bucket_rect = pygame.Rect(self.x, self.y, 50, 100)
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -59,10 +65,13 @@ class Zombie:
             self.health -= amount
             impact_sounds = ['zombie_impact1', 'zombie_impact2', 'zombie_impact3']
             self.game_field.game.sound_manager.play_sound(random.choice(impact_sounds))
+        self.damage_flash_timer = 0.1
 
     def update(self, dt):
-        self.speed = self.normal_speed if self.slow_timer <= 0 else self.normal_speed * 0.5
         self.slow_timer = max(0, self.slow_timer - dt)
+        self.frozen_effect = self.slow_timer > 0
+        self.damage_flash_timer = max(0, self.damage_flash_timer - dt)
+        dt_effective = dt / 2 if self.frozen_effect else dt
 
         if self.health <= 0 and not self.dying:
             self.dying = True
@@ -73,7 +82,7 @@ class Zombie:
 
         if self.dying:
             if self.current_action == 'death':
-                self.animation_timer += dt
+                self.animation_timer += dt_effective
                 if self.animation_timer >= self.frame_duration:
                     self.animation_timer -= self.frame_duration
                     self.frame_index += 1
@@ -95,7 +104,7 @@ class Zombie:
             plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
             if self.x > plant_x + self.game_field.cell_width / 2:
                 if (3 <= self.frame_index <= 14 or 22 <= self.frame_index <= 38):
-                    self.x -= self.speed * dt
+                    self.x -= self.speed * dt_effective
                 if self.current_action != 'walk':
                     self.current_action = 'walk'
                     self.frame_index = 0
@@ -108,19 +117,22 @@ class Zombie:
                     self.frame_index = 0
                     self.animation_timer = 0.0
                     self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
-                self.last_sound_time += dt
+                self.last_sound_time += dt_effective
+                self.damage_timer += dt_effective
                 if self.last_sound_time > 0.75:
                     self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
                     self.last_sound_time = 0.0
-                plant = self.game_field.grid[self.lane][target_col]
-                if hasattr(plant, 'health'):
-                    plant.health -= 1
-                    if plant.health <= 0:
-                        self.game_field.grid[self.lane][target_col] = None
-                        self.game_field.game.sound_manager.play_sound('plant_break')
+                if self.damage_timer > 0.013:
+                    plant = self.game_field.grid[self.lane][target_col]
+                    if hasattr(plant, 'health'):
+                        plant.health -= 1
+                        if plant.health <= 0:
+                            self.game_field.grid[self.lane][target_col] = None
+                            self.game_field.game.sound_manager.play_sound('plant_break')
+                    self.damage_timer = 0.0
         else:
             if (3 <= self.frame_index <= 14 or 25 <= self.frame_index <= 41):
-                self.x -= self.speed * dt
+                self.x -= self.speed * dt_effective
             if self.current_action != 'walk':
                 self.current_action = 'walk'
                 self.frame_index = 0
@@ -129,9 +141,13 @@ class Zombie:
 
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
+        self.cone_rect.x = int(self.x)
+        self.cone_rect.y = int(self.y)
+        self.bucket_rect.x = int(self.x)
+        self.bucket_rect.y = int(self.y)
 
         # Update animation
-        self.animation_timer += dt
+        self.animation_timer += dt_effective
         if self.animation_timer >= self.frame_duration:
             self.animation_timer -= self.frame_duration
             self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
@@ -140,17 +156,42 @@ class Zombie:
         # Always draw the basic zombie
         frame = self.animation_frames[self.current_action][self.frame_index]
         scaled_frame = pygame.transform.scale(frame, (325 // 1.2, 290 // 1.2))
-        screen.blit(scaled_frame, (self.x-80, self.y-100))
+        combined_surface = pygame.Surface((325, 330), pygame.SRCALPHA)
+        combined_surface.blit(scaled_frame, (0, 30))
         # If bucket health > 0, draw bucket on top
         if self.bucket_health > 0:
             bucket_frame = self.bucket_animation_frames[self.current_action][self.frame_index]
             scaled_bucket = pygame.transform.scale(bucket_frame, (190 // 1.2, 330 // 1.2))
-            screen.blit(scaled_bucket, (self.x+35, self.y-130))
+            combined_surface.blit(scaled_bucket, (135, 0))  # relative positions
         # If cone health > 0, draw cone on top
         if self.cone_health > 0:
             cone_frame = self.cone_animation_frames[self.current_action][self.frame_index]
             scaled_cone = pygame.transform.scale(cone_frame, (325 // 1.2, 330 // 1.2))
-            screen.blit(scaled_cone, (self.x-80, self.y-130))
+            combined_surface.blit(scaled_cone, (0, 0))
+
+        # Visual effects
+        if self.damage_flash_timer > 0:
+            combined_surface = combined_surface.copy()
+            tint = pygame.Surface(combined_surface.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = surfarray.pixels_alpha(tint)
+            frame_alpha = surfarray.pixels_alpha(combined_surface)
+            tint_alpha[:] = frame_alpha
+            del tint_alpha
+            del frame_alpha
+            combined_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+        if self.frozen_effect:
+            combined_surface = combined_surface.copy()
+            tint = pygame.Surface(combined_surface.get_size(), pygame.SRCALPHA)
+            tint.fill((0, 0, 128, 0))
+            tint_alpha = surfarray.pixels_alpha(tint)
+            frame_alpha = surfarray.pixels_alpha(combined_surface)
+            tint_alpha[:] = frame_alpha
+            del tint_alpha
+            del frame_alpha
+            combined_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+        screen.blit(combined_surface, (self.x-160, self.y-130))
 
 class ConeheadZombie(Zombie):
     def __init__(self, lane, scaler, game_field):
