@@ -4,18 +4,6 @@
 # Adjust the ranges based on your actual frame sequences.
 
 ZOMBIE_ANIMATIONS = {
-    'idle1': {
-        'start_frame': 46,
-        'end_frame': 92,
-        'loop': True,
-        'fps': 12  # frames per second for this animation
-    },
-    'idle2': {
-        'start_frame': 46,
-        'end_frame': 92,
-        'loop': True,
-        'fps': 12  # frames per second for this animation
-    },    
     'walk': {
         'start_frame': 46,
         'end_frame': 92,
@@ -162,13 +150,13 @@ REPEATER_ANIMATIONS = {
         'fps': 12
     },
     'shoot': {
-        'start_frame': 55,
+        'start_frame': 30,
         'end_frame': 79,  # Use shoot_top frames for timing
         'loop': False,
         'fps': 24
     },
     'shoot_top': {
-        'start_frame': 55,
+        'start_frame': 30,
         'end_frame': 79,  # Adjust based on actual frames
         'loop': True,
         'fps': 24
@@ -183,7 +171,7 @@ REPEATER_ANIMATIONS = {
         'start_frame': 1,
         'end_frame': 5,  # Adjust based on actual frames
         'loop': False,
-        'fps': 12
+        'fps': 24
     }
 }
 
@@ -290,8 +278,8 @@ MAIN_MENU = {
     'awake':{
         'start_frame': 1,
         'end_frame': 40,
-        'loop': True,
-        'fps': 48      
+        'loop': False,
+        'fps': 24    
     }
 }
 

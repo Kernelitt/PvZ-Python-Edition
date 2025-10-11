@@ -5,26 +5,21 @@ from zombie_animations import get_animation_frames, ZOMBIE_ANIMATIONS
 from preloader import preloaded_images
 
 class Zombie:
-    def __init__(self, z_type, lane, scaler, game_field):
-        self.z_type = z_type
+    def __init__(self, lane, scaler, game_field):
+        self.z_type = 'Basic Zombie'
         self.lane = lane
-        self.game_field = game_field
-        self.x = scaler.scale_x(BASE_WIDTH)
-        self.y = scaler.scale_y(160 + lane * self.game_field.cell_height + self.game_field.cell_height / 2 - 50)
-        self.normal_speed = 45 * 1 + random.choice([-1,1]) / 10
+        self.x = scaler.scale_x(BASE_WIDTH + random.randint(10,100))
+        self.y = scaler.scale_y(160 + lane * ((1025 - 160) / 5) + ((1025 - 160) / 5) / 2 - 50)
+        self.normal_speed = 60 * 1 + random.choice([-1,1]) / 10
         self.speed = self.normal_speed
-        self.health = ZOMBIE_HEALTH.get(z_type + ' Health', 270)
+        self.health = 270
         self.cone_health = 0
         self.bucket_health = 0
+        self.game_field = game_field
         self.attack_sound_index = random.randint(0, 1)
         self.last_sound_time = 0.0
         self.slow_timer = 0.0
-        self.rect = pygame.Rect(self.x, self.y, 150, 100)
-
-        if z_type == "Conehead Zombie":
-            self.cone_health = 370
-        if z_type == "Buckethead Zombie":
-            self.bucket_health = 1100
+        self.rect = pygame.Rect(self.x, self.y, 50, 100)
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -46,6 +41,24 @@ class Zombie:
         self.frame_duration = 1.0 / ZOMBIE_ANIMATIONS[self.current_action]['fps']
         self.dying = False
         self.to_remove = False
+
+    def take_damage(self, amount):
+        if self.bucket_health > 0:
+            self.bucket_health -= amount
+            if self.bucket_health <= 0:
+                self.bucket_health = 0
+            impact_sounds = ['bucket_impact1', 'bucket_impact2']
+            self.game_field.game.sound_manager.play_sound(random.choice(impact_sounds))
+        elif self.cone_health > 0:
+            self.cone_health -= amount
+            if self.cone_health <= 0:
+                self.cone_health = 0
+            impact_sounds = ['cone_impact1', 'cone_impact2']
+            self.game_field.game.sound_manager.play_sound(random.choice(impact_sounds))
+        else:
+            self.health -= amount
+            impact_sounds = ['zombie_impact1', 'zombie_impact2', 'zombie_impact3']
+            self.game_field.game.sound_manager.play_sound(random.choice(impact_sounds))
 
     def update(self, dt):
         self.speed = self.normal_speed if self.slow_timer <= 0 else self.normal_speed * 0.5
@@ -72,8 +85,7 @@ class Zombie:
         # Find the rightmost plant in the lane ahead
         target_col = None
         for col in range(self.game_field.cols - 1, -1, -1):
-            cell = self.game_field.grid[self.lane][col]
-            if cell['plant'] is not None or cell['base'] is not None:
+            if self.game_field.grid[self.lane][col] is not None:
                 plant_x = self.game_field.field_x + col * self.game_field.cell_width
                 if self.x > plant_x:
                     target_col = col
@@ -82,7 +94,8 @@ class Zombie:
             # Target the plant
             plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
             if self.x > plant_x + self.game_field.cell_width / 2:
-                self.x -= self.speed * dt
+                if (3 <= self.frame_index <= 14 or 22 <= self.frame_index <= 38):
+                    self.x -= self.speed * dt
                 if self.current_action != 'walk':
                     self.current_action = 'walk'
                     self.frame_index = 0
@@ -99,18 +112,15 @@ class Zombie:
                 if self.last_sound_time > 0.75:
                     self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
                     self.last_sound_time = 0.0
-                cell = self.game_field.grid[self.lane][target_col]
-                plant = cell['plant'] if cell['plant'] is not None else cell['base']
+                plant = self.game_field.grid[self.lane][target_col]
                 if hasattr(plant, 'health'):
                     plant.health -= 1
                     if plant.health <= 0:
-                        if cell['plant'] is not None:
-                            cell['plant'] = None
-                        else:
-                            cell['base'] = None
+                        self.game_field.grid[self.lane][target_col] = None
                         self.game_field.game.sound_manager.play_sound('plant_break')
         else:
-            self.x -= self.speed * dt
+            if (3 <= self.frame_index <= 14 or 25 <= self.frame_index <= 41):
+                self.x -= self.speed * dt
             if self.current_action != 'walk':
                 self.current_action = 'walk'
                 self.frame_index = 0
@@ -142,13 +152,15 @@ class Zombie:
             scaled_cone = pygame.transform.scale(cone_frame, (325 // 1.2, 330 // 1.2))
             screen.blit(scaled_cone, (self.x-80, self.y-130))
 
-class ConeZombie(Zombie):
-    def __init__(self, z_type, lane, scaler, game_field):
-        super().__init__(z_type, lane, scaler, game_field)
+class ConeheadZombie(Zombie):
+    def __init__(self, lane, scaler, game_field):
+        super().__init__(lane, scaler, game_field)
+        self.z_type = 'Conehead Zombie'
         self.cone_health = 370
 
-class BucketZombie(Zombie):
-    def __init__(self, z_type, lane, scaler, game_field):
-        super().__init__(z_type, lane, scaler, game_field)
+class BucketheadZombie(Zombie):
+    def __init__(self, lane, scaler, game_field):
+        super().__init__(lane, scaler, game_field)
+        self.z_type = 'Buckethead Zombie'
         self.bucket_health = 1100
 

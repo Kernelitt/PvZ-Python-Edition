@@ -147,6 +147,7 @@ PLANT_DAMAGE = {
     "Melon":80,
 
     "CherryBomb":1800,
+    "PotatoMine":1800,
     "Squash":1800,
     "DoomShroom":1800,
     "Japanelo":1800,
@@ -204,5 +205,3 @@ WAVE_OPTIONS = {
     "Every": 2,
     "Points":2
 }
-
-WATER_ONLY_PLANTS = ['Lily Pad']

@@ -95,7 +95,7 @@ class Peashooter(Plant):
                 self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
 
         # Check if there is a zombie in the same lane ahead
-        has_target = any(z for z in self.game.main_game.zombies if z.lane == self.row and z.x > self.x)
+        has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x)
         if has_target:
             if self.shoot_delay == 0.0:
                 self.shoot_delay = random.uniform(1.0, 1.5)
@@ -107,6 +107,7 @@ class Peashooter(Plant):
                     self.shoot_frame_index = 0
                     self.shoot_timer = 0.0
                     self.shoot_bottom_frame_index = self.idle_frame_index  # start from current idle frame
+                    self.shooting_second = False
                     self.shoot()
                     self.last_action_time = current_time
                     self.shoot_delay_timer = 0.0
@@ -155,6 +156,10 @@ class Peashooter(Plant):
         proj_y = self.y + 35  # roughly middle height of plant
         new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
         self.projectiles.append(new_proj)
+        self.game.sound_manager.play_sound('throw')
+        if not self.shooting_second:
+            self.shooting_second = True
+            self.second_shot_timer = 0.5
 
     def draw(self, screen):
         if self.current_action == 'idle':
@@ -198,6 +203,7 @@ class Sunflower(Plant):
             sun_y = self.y + 20
             new_sun = Sun(sun_x, sun_y, self.game)
             self.suns.append(new_sun)
+            self.game.sound_manager.play_sound('sun')
             self.sun_timer = 0.0
 
         # Update suns
@@ -262,10 +268,10 @@ class CherryBomb(Plant):
                     # Damage zombies in this cell's lane
                     for zombie in self.game.main_game.zombies:
                         if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
-                            zombie.health -= damage
+                            zombie.take_damage(damage)
         # Remove plant from grid
-        self.game.main_game.game_field.grid[self.row][plant_col]['plant'] = None
-        self.game.sound_manager.play_sound('cherrybomb')  # or explosion sound if available
+        self.game.main_game.game_field.grid[self.row][plant_col] = None
+        self.game.sound_manager.play_sound('cherrybomb')
 
     def draw(self, screen):
         if self.exploded:
@@ -306,6 +312,7 @@ class PotatoMine(Plant):
         self.timer = self.arming_delay
         self.armed = False
         self.exploded = False
+        self.rect = pygame.Rect(self.x, self.y, 80, 80)
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -318,6 +325,9 @@ class PotatoMine(Plant):
     def update(self, dt):
         if self.exploded:
             return
+        if self.health <= 0 and self.armed:
+            self.explode()
+            return
         if not self.armed:
             self.timer -= dt
             if self.timer <= 0:
@@ -326,7 +336,7 @@ class PotatoMine(Plant):
         else:
             # Check if zombie is stepping on it
             for zombie in self.game.main_game.zombies:
-                if zombie.lane == self.row and abs(zombie.x - self.x) < 50:  # close enough
+                if zombie.lane == self.row and self.rect.colliderect(zombie.rect):
                     self.explode()
                     return
         # Update idle animation
@@ -338,21 +348,19 @@ class PotatoMine(Plant):
 
     def explode(self):
         self.exploded = True
-        damage = PLANT_DAMAGE.get("CherryBomb", 1800)  # same as cherry bomb?
-        # Damage zombies in area
+        damage = PLANT_DAMAGE.get("PotatoMine", 1800)
+        # Damage zombies in the same cell
         plant_row = self.row
         plant_col = int((self.x - self.game.main_game.game_field.field_x) // self.game.main_game.game_field.cell_width)
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                r = plant_row + dr
-                c = plant_col + dc
-                if 0 <= r < self.game.main_game.game_field.rows and 0 <= c < self.game.main_game.game_field.cols:
-                    for zombie in self.game.main_game.zombies:
-                        if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
-                            zombie.health -= damage
+        r = plant_row
+        c = plant_col
+        if 0 <= r < self.game.main_game.game_field.rows and 0 <= c < self.game.main_game.game_field.cols:
+            for zombie in self.game.main_game.zombies:
+                if zombie.lane == r and abs(zombie.x - (self.game.main_game.game_field.field_x + c * self.game.main_game.game_field.cell_width)) < self.game.main_game.game_field.cell_width:
+                    zombie.take_damage(damage)
         # Remove plant from grid
-        self.game.main_game.game_field.grid[self.row][plant_col]['plant'] = None
-        self.game.sound_manager.play_sound('plant_break')
+        self.game.main_game.game_field.grid[self.row][plant_col] = None
+        self.game.sound_manager.play_sound('potato_mine')
 
     def draw(self, screen):
         if self.exploded:
@@ -452,6 +460,7 @@ class SnowPea(Plant):
         proj_y = self.y + 35
         new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='snowpea')
         self.projectiles.append(new_proj)
+        self.game.sound_manager.play_sound('throw')
 
     def draw(self, screen):
         if self.current_action == 'idle':
@@ -497,7 +506,12 @@ class Chomper(Plant):
 
 class Repeater(Plant):
     def __init__(self, x, y, game, row):
-        super().__init__(x, y, "Repeater", game, row)
+        super().__init__(x-30, y, "Repeater", game, row)
+        self.projectile_speed = 480  # pixels per second
+        self.damage = PLANT_DAMAGE.get("Pea", 20)
+        self.fire_rate = PLANT_TIMERS.get("Repeater Fire Rate", 1500) / 1000.0  # convert ms to seconds
+        # Load projectile image
+        self.projectile_image = pygame.image.load(PROJECTILE_TEXTURES_PATH["Pea"]).convert_alpha()
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -506,19 +520,105 @@ class Repeater(Plant):
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
+        self.blink_frame_index = 0
+        self.blink_timer = 0.0
+        self.shoot_frame_index = 0
+        self.shoot_timer = 0.0
+        self.shoot_bottom_frame_index = 0
+        self.shoot_delay = 0.0
+        self.shoot_delay_timer = 0.0
 
-    def update(self, dt):
-        # Update idle animation
-        self.idle_timer += dt
-        idle_fps = REPEATER_ANIMATIONS['idle']['fps']
-        if self.idle_timer >= 1.0 / idle_fps:
-            self.idle_timer -= 1.0 / idle_fps
-            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+    def update(self, dt, zombies):
+        # Update idle animation (pauses during blink)
+        if self.current_action != 'blink':
+            self.idle_timer += dt
+            idle_fps = REPEATER_ANIMATIONS['idle']['fps']
+            if self.idle_timer >= 1.0 / idle_fps:
+                self.idle_timer -= 1.0 / idle_fps
+                self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+        # Check if there is a zombie in the same lane ahead
+        has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x)
+        if has_target:
+            if self.shoot_delay == 0.0:
+                self.shoot_delay = random.uniform(1.0, 1.5)
+            self.shoot_delay_timer += dt
+            if self.shoot_delay_timer >= self.shoot_delay:
+                current_time = time.time()
+                if current_time - self.last_action_time >= self.fire_rate:
+                    self.current_action = 'shoot'
+                    self.shoot_frame_index = 0
+                    self.shoot_timer = 0.0
+                    self.shoot_bottom_frame_index = self.idle_frame_index  # start from current idle frame
+                    self.shooting_second = False
+                    self.shoot()
+                    self.last_action_time = current_time
+                    self.shoot_delay_timer = 0.0
+                    self.shoot_delay = 0.0
+        else:
+            self.shoot_delay = 0.0
+            self.shoot_delay_timer = 0.0
+
+        # Random blink
+        if self.current_action == 'idle' and self.idle_frame_index == 0 and random.random() < 0.1:  # low chance per frame
+            self.current_action = 'blink'
+            self.blink_frame_index = 0
+            self.blink_timer = 0.0
+
+        # Update blink animation
+        if self.current_action == 'blink':
+            self.blink_timer += dt
+            blink_fps = REPEATER_ANIMATIONS['blink']['fps']
+            if self.blink_timer >= 1.0 / blink_fps:
+                self.blink_timer -= 1.0 / blink_fps
+                self.blink_frame_index += 1
+                if self.blink_frame_index >= len(self.animation_frames['blink']):
+                    self.current_action = 'idle'
+                    self.blink_frame_index = 0
+
+        # Update shoot animation
+        if self.current_action == 'shoot':
+            self.shoot_timer += dt
+            shoot_fps = REPEATER_ANIMATIONS['shoot']['fps']
+            if self.shoot_timer >= 1.0 / shoot_fps:
+                self.shoot_timer -= 1.0 / shoot_fps
+                self.shoot_frame_index += 1
+                if self.shoot_frame_index == 54:
+                    self.shoot()
+                if self.shoot_frame_index >= len(self.animation_frames['shoot']):
+                    self.current_action = 'idle'
+                    self.shoot_frame_index = 0
+
+        # Update projectiles
+        for projectile in self.projectiles:
+            projectile.update(dt)
+        # Remove inactive projectiles
+        self.projectiles = [p for p in self.projectiles if p.active]
+
+    def shoot(self):
+        # Create a new projectile starting at plant's position
+        proj_x = self.x + 50  # start at right edge of plant
+        proj_y = self.y + 35  # roughly middle height of plant
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
+        self.projectiles.append(new_proj)
 
     def draw(self, screen):
-        frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.current_action == 'idle':
+            frame = self.animation_frames['idle'][self.idle_frame_index]
+        elif self.current_action == 'blink':
+            frame = self.animation_frames['idle'][self.idle_frame_index].copy()
+            blink_frame = self.animation_frames['blink'][self.blink_frame_index]
+            frame.blit(blink_frame, (0,0))
+        elif self.current_action == 'shoot':
+            # shoot_bottom is the base, shoot_top overlays on head
+            frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
+            shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
+            frame.blit(shoot_top_frame, (0,0))
         scaled_frame = pygame.transform.scale(frame, (180, 180))
         screen.blit(scaled_frame, (self.x, self.y))
+        # Draw projectiles
+        for projectile in self.projectiles:
+            projectile.draw(screen)
 
 class LilyPad(Plant):
     def __init__(self, x, y, game, row):
@@ -704,4 +804,4 @@ class Sun:
     def collect(self):
         self.collected = True
         self.game.main_game.sun_count += 25
-        self.game.sound_manager.play_sound('plant')
+        self.game.sound_manager.play_sound('points')

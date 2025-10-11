@@ -44,7 +44,7 @@ class Slider:
 from definitions import *
 from plants import *
 from zombie_animations import *
-from zombies import Zombie
+from zombies import Zombie, ConeheadZombie, BucketheadZombie
 from preloader import preload_all, preload_ui
 
 class SoundManager:
@@ -55,20 +55,84 @@ class SoundManager:
         self.muted = False
         self.current_music = None
         self.music_files = {
-            'menu': 'music/crazy_dave.mp3',  # Placeholder paths
+            'menu': 'music/crazy_dave.mp3',
             'seed_select': 'music/choose_your_seeds.mp3',
-            'game': 'music/grasswalk.mp3',
+
+            'music_day': 'music/grasswalk.mp3',
+            'music_night': 'music/moongrains.mp3',
+            'music_pool': 'music/watery_graves.mp3',
+            'music_fog': 'music/rigor_mormist.mp3',
+            'music_roof': 'music/graze_the_roof.mp3',
+
+            'X-10': 'music/braniac_maniac.mp3',
+            'minigames_X-5': 'music/loonboon.mp3',
+            '5-10': 'music/ultimate_battle.mp3',
+            'zen_garden': 'music/zen_garden.mp3',
+
             'win': 'sounds/winmusic.ogg',
             'lose': 'sounds/losemusic.ogg'
         }
         self.sound_effects = {}
         sound_files = {
+            'zombie_impact1': 'sounds/splat.ogg',
+            'zombie_impact2': 'sounds/splat2.ogg',
+            'zombie_impact3': 'sounds/splat3.ogg',
+            'cone_impact1': 'sounds/plasichit.ogg',
+            'cone_impact2': 'sounds/plasichit2.ogg',
+            'bucket_impact1': 'sounds/shieldhit.ogg',
+            'bucket_impact2': 'sounds/shieldhit2.ogg',
+            'zombie_frozen': 'sounds/frozen.ogg',
+
+            'seed_packet_click':'sounds/seed_lift',
             'plant': 'sounds/plant.ogg',
+            'plant2': 'sounds/plant2.ogg',
+            'plant_on_water': 'sounds/plant_water.ogg',
+
             'zombie_death': 'sounds/splat.ogg',
+
+            'zombie_falling1': 'sounds/zombie_falling_1.ogg',
+            'zombie_falling2': 'sounds/zombie_falling_2.ogg',
+
             'zombie_attack1': 'sounds/chomp.ogg',
             'zombie_attack2': 'sounds/chomp2.ogg',
+
             'plant_break': 'sounds/gulp.ogg',
+
+            'bigchomp': 'sounds/bigchomp.ogg',
             'cherrybomb': 'sounds/cherrybomb.ogg',
+            'potato_mine': 'sounds/potato_mine.ogg',
+            'jalapeno': 'sounds/jalapeno.ogg',
+            'firepea': 'sounds/firepea.ogg',
+            'butter': 'sounds/butter.ogg',
+            'balloon_pop': 'sounds/balloon_pop.ogg',
+            'zombie_entering_water': 'sounds/zombie_entering_water.ogg',
+            'zombie_splash': 'sounds/zombiesplash.ogg',
+            'limbs_pop': 'sounds/limbs_pop.ogg',
+            'newspaper_rip': 'sounds/newspaper_rarrgh.ogg',
+            'polevault': 'sounds/polevault.ogg',
+            'pogo_zombie': 'sounds/pogo_zombie.ogg',
+            'digger_zombie': 'sounds/digger_zombie.ogg',
+            'ladder_zombie': 'sounds/ladder_zombie.ogg',
+            'bungee_scream': 'sounds/bungee_scream.ogg',
+            'jackinthebox': 'sounds/jackinthebox.ogg',
+            'jack_surprise': 'sounds/jack_surprise.ogg',
+            'finalwave': 'sounds/finalwave.ogg',
+            'hugewave': 'sounds/hugewave.ogg',
+            'readysetplant': 'sounds/readysetplant.ogg',
+            'finalfanfare': 'sounds/finalfanfare.ogg',
+            'prize': 'sounds/prize.ogg',
+            'slotmachine': 'sounds/slotmachine.ogg',
+            'buttonclick': 'sounds/buttonclick.ogg',
+            'pause': 'sounds/pause.ogg',
+            'seedlift': 'sounds/seedlift.ogg',
+            'points': 'sounds/points.ogg',
+            'boing': 'sounds/boing.ogg',
+            'bonk': 'sounds/bonk.ogg',
+            'throw': 'sounds/throw.ogg',
+            'throw2': 'sounds/throw2.ogg',
+            'coin_collect': 'sounds/coin.ogg',
+            'shovel': 'sounds/shovel.ogg',
+            'explosion': 'sounds/explosion.ogg'
         }
         for name, path in sound_files.items():
             try:
@@ -121,21 +185,18 @@ class SoundManager:
 
 
 class GameField:
-    def __init__(self, scaler, width, height, game, level_data):
+    def __init__(self, scaler, width, height, game):
         self.game = game
         self.scaler = scaler
         self.screen_width = width
         self.screen_height = height
-        self.rows = level_data.get('rows', 5)
+        self.rows = 5
         self.cols = 9
         self.cell_width = self.scaler.scale_x((1770 - 450) / 9)  # Adjusted cell width
-        bottom_y = 1025 + (60 if self.rows == 6 else 0)
-        self.cell_height = self.scaler.scale_y((bottom_y - 160) / self.rows)  # Adjusted cell height
+        self.cell_height = self.scaler.scale_y((1025 - 160) / 5)  # Adjusted cell height
         self.field_x = self.scaler.scale_x(450)  # Top-left x
         self.field_y = self.scaler.scale_y(160)  # Top-left y
-        self.grid = [[{'base': None, 'plant': None} for _ in range(self.cols)] for _ in range(self.rows)]
-        self.water_rows = level_data.get('water_rows', [])
-        self.water_only_plants = set(WATER_ONLY_PLANTS)
+        self.grid = [[None for _ in range(self.cols)] for _ in range(self.rows)]  # Placeholder for plants
         self.plant_classes = {
             'Peashooter': Peashooter,
             'Sunflower': Sunflower,
@@ -157,15 +218,9 @@ class GameField:
             for col in range(self.cols):
                 x = self.field_x + col * self.cell_width
                 y = self.field_y + row * self.cell_height
-                if row in self.water_rows:
-                    pygame.draw.rect(screen, (0, 0, 255), (x, y, self.cell_width, self.cell_height), 2)  # Blue border for water
-                else:
-                    pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
-                # Draw base and plant if present
-                base = self.grid[row][col]['base']
-                plant = self.grid[row][col]['plant']
-                if base:
-                    base.draw(screen)
+                pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
+                # Draw plant if present
+                plant = self.grid[row][col]
                 if plant:
                     if hasattr(plant, 'draw'):
                         plant.draw(screen)
@@ -184,72 +239,31 @@ class GameField:
                     if self.game.main_game.seed_recharge_timers[selected_plant['name']] > 0:
                         print("Seed is recharging!")
                         return
-                # Check planting restrictions
-                sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
-                if self.game.main_game.sun_count >= sun_cost:
-                    self.game.main_game.sun_count -= sun_cost
-                    if row in self.water_rows:
-                        if selected_plant['name'] == 'Lily Pad':
-                            if self.grid[row][col]['base'] is None:
-                                plant_class = self.plant_classes.get(selected_plant['name'])
+                    # Plant in the cell if empty
+                    if self.grid[row][col] is None:
+                        sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
+                        if self.game.main_game.sun_count >= sun_cost:
+                            self.game.main_game.sun_count -= sun_cost
+                            plant_class = self.plant_classes.get(selected_plant['name'])
+                            if plant_class:
                                 x_pos = self.field_x + col * self.cell_width + 5
                                 y_pos = self.field_y + row * self.cell_height + 5
                                 plant = plant_class(x_pos, y_pos, self.game, row)
-                                self.grid[row][col]['base'] = plant
+                                self.grid[row][col] = plant
                                 self.game.sound_manager.play_sound('plant')
                                 print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                                self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
-                                self.game.main_game.selected_seed = None
                             else:
-                                print("Already has base!")
+                                health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
+                                self.grid[row][col] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
+                                self.game.sound_manager.play_sound('plant')
+                                print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                            # Reset recharge timer
+                            self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                            self.game.main_game.selected_seed = None
                         else:
-                            if self.grid[row][col]['base'] is not None:
-                                if self.grid[row][col]['plant'] is None:
-                                    plant_class = self.plant_classes.get(selected_plant['name'])
-                                    if plant_class:
-                                        x_pos = self.field_x + col * self.cell_width + 5
-                                        y_pos = self.field_y + row * self.cell_height + 5
-                                        plant = plant_class(x_pos, y_pos, self.game, row)
-                                        self.grid[row][col]['plant'] = plant
-                                        self.game.sound_manager.play_sound('plant')
-                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                                    else:
-                                        health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
-                                        self.grid[row][col]['plant'] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
-                                        self.game.sound_manager.play_sound('plant')
-                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                                    self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
-                                    self.game.main_game.selected_seed = None
-                                else:
-                                    print("Cell is occupied!")
-                            else:
-                                print("Need Lily Pad first!")
-                    else:
-                        if selected_plant['name'] in self.water_only_plants:
-                            print("Can only plant on water!")
-                        else:
-                            if self.grid[row][col]['plant'] is None:
-                                plant_class = self.plant_classes.get(selected_plant['name'])
-                                if plant_class:
-                                    x_pos = self.field_x + col * self.cell_width + 5
-                                    y_pos = self.field_y + row * self.cell_height + 5
-                                    plant = plant_class(x_pos, y_pos, self.game, row)
-                                    self.grid[row][col]['plant'] = plant
-                                    self.game.sound_manager.play_sound('plant')
-                                    print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                                else:
-                                    health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
-                                    self.grid[row][col]['plant'] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
-                                    self.game.sound_manager.play_sound('plant')
-                                    print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                                self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
-                                self.game.main_game.selected_seed = None
-                            else:
-                                print("Cell is occupied!")
+                            print("Not enough sun!")
                 else:
-                    print("Not enough sun!")
-            else:
-                print(f"Clicked on cell ({row}, {col}) - No plant selected")
+                    print(f"Clicked on cell ({row}, {col}) - No plant selected")
 
 class MainMenu:
     def __init__(self, game):
@@ -478,6 +492,7 @@ class SeedSelect:
 
     def begin_game(self):
         self.game.seed_packets = [{'name': plant, 'icon': self.game.plant_icons.get(plant, self.game.seed_image)} for plant in self.selected_plants]
+        self.game.main_game = MainGame(self.game, self.game.selected_level)
         self.game.pre_animation_delay = 1.0
         self.game.pending_state = 'game'
         self.game.target_offset_pending = -250 * self.game.bg_scale_factor
@@ -682,7 +697,19 @@ class MainGame:
     def __init__(self, game, level_name):
         self.game = game
         self.level_data = game.levels[level_name]
-        self.game_field = GameField(game.scaler, game.width, game.height, game, self.level_data)
+        if 'background1.png' in self.level_data['background']:
+            self.music = 'music_day'
+        elif 'background2.png' in self.level_data['background']:
+            self.music = 'music_night'
+        elif 'background3.png' in self.level_data['background']:
+            self.music = 'music_pool'
+        elif 'background4.png' in self.level_data['background']:
+            self.music = 'music_fog'
+        elif 'background5.png' in self.level_data['background']:
+            self.music = 'music_roof'
+        else:
+            self.music = 'X-10'
+        self.game_field = GameField(game.scaler, game.width, game.height, game)
         self.sun_count = self.level_data['start_sun']
         self.selected_seed = None
         self.hotbar_height = game.scaler.scale_y(100 * 2)
@@ -700,7 +727,7 @@ class MainGame:
         self.game_won = False
         self.sky_suns = []
         self.sky_sun_timer = 0.0
-        self.sky_sun_interval = random.uniform(7.5, 10.0)
+        self.sky_sun_interval = random.uniform(10.0, 15.0)
         # Initialize seed recharge timers as mutable dict with 0 (ready) for each plant
         self.seed_recharge_timers = {plant: 0 for plant in PLANT_RECHARGE}
 
@@ -714,7 +741,7 @@ class MainGame:
 
         # Draw seed packets
         seed_x_start = self.game.scaler.scale_x(80 * 2)
-        seed_y = self.game.scaler.scale_y(10 * 2)
+        seed_y = self.game.scaler.scale_y(8 * 2)
         seed_w = self.game.scaler.scale_x(45 * 2)
         seed_h = self.game.scaler.scale_y(65 * 2)
         offset = self.game.scaler.scale_x(5 * 2)
@@ -728,7 +755,7 @@ class MainGame:
             screen.blit(scaled_seed, rect)
             # Draw plant icon on top
             icon = seed['icon']
-            scaled_icon = pygame.transform.scale(icon, (int(seed_w * 1), int(seed_h * 1)))
+            scaled_icon = pygame.transform.scale(icon, (int(seed_w * 1), int(seed_h * 0.7)))
             icon_rect = scaled_icon.get_rect(center=rect.center)
             screen.blit(scaled_icon, icon_rect)
             # Highlight selected seed
@@ -780,7 +807,7 @@ class MainGame:
                 # Check if clicked on any suns to collect
                 for row in range(self.game_field.rows):
                     for col in range(self.game_field.cols):
-                        plant = self.game_field.grid[row][col]['plant']
+                        plant = self.game_field.grid[row][col]
                         if plant and hasattr(plant, 'suns'):
                             for sun in plant.suns:
                                 if sun.rect.collidepoint(event.pos) and not sun.collected:
@@ -821,7 +848,7 @@ class MainGame:
         # Update suns from all sunflowers
         for row in range(self.game_field.rows):
             for col in range(self.game_field.cols):
-                plant = self.game_field.grid[row][col]['plant']
+                plant = self.game_field.grid[row][col]
                 if plant and hasattr(plant, 'suns'):
                     for sun in plant.suns:
                         sun.update(dt)
@@ -836,9 +863,9 @@ class MainGame:
         # Update plants
         for row in range(self.game_field.rows):
             for col in range(self.game_field.cols):
-                plant = self.game_field.grid[row][col]['plant']
+                plant = self.game_field.grid[row][col]
                 if plant and hasattr(plant, 'update'):
-                    if isinstance(plant, (Peashooter, SnowPea)):
+                    if isinstance(plant, (Peashooter, SnowPea, Repeater)):
                         plant.update(dt, self.zombies)
                     else:
                         plant.update(dt)
@@ -846,7 +873,7 @@ class MainGame:
         # Remove collected suns from sunflowers
         for row in range(self.game_field.rows):
             for col in range(self.game_field.cols):
-                plant = self.game_field.grid[row][col]['plant']
+                plant = self.game_field.grid[row][col]
                 if plant and hasattr(plant, 'suns'):
                     plant.suns = [s for s in plant.suns if not s.collected]
 
@@ -867,22 +894,13 @@ class MainGame:
         for zombie in self.zombies:
             for row in range(self.game_field.rows):
                 for col in range(self.game_field.cols):
-                    plant = self.game_field.grid[row][col]['plant']
+                    plant = self.game_field.grid[row][col]
                     if plant and hasattr(plant, 'projectiles'):
                         for projectile in plant.projectiles[:]:
                             if projectile.collides_with(zombie):
                                 if projectile.proj_type == 'snowpea':
                                     zombie.slow_timer = 10.0
-                                if zombie.cone_health > 0:
-                                    zombie.cone_health -= projectile.damage
-                                    if zombie.cone_health <= 0:
-                                        zombie.cone_health = 0
-                                if zombie.bucket_health > 0:
-                                    zombie.bucket_health -= projectile.damage
-                                    if zombie.bucket_health <= 0:
-                                        zombie.bucket_health = 0
-                                else:
-                                    zombie.health -= projectile.damage
+                                zombie.take_damage(projectile.damage)
                                 plant.projectiles.remove(projectile)
                                 break
 
@@ -941,11 +959,18 @@ class MainGame:
         random.shuffle(zombies_to_spawn)
 
         for i, z_type in enumerate(zombies_to_spawn):
-            lane = random.randint(0, self.game_field.rows - 1)
-            zombie = Zombie(z_type, lane, self.game.scaler, self.game_field)
+            lane = random.randint(0,4)
+            if z_type == 'Basic Zombie':
+                zombie = Zombie(lane, self.game.scaler, self.game_field)
+            elif z_type == 'Conehead Zombie':
+                zombie = ConeheadZombie(lane, self.game.scaler, self.game_field)
+            elif z_type == 'Buckethead Zombie':
+                zombie = BucketheadZombie(lane, self.game.scaler, self.game_field)
+            else:
+                zombie = Zombie(lane, self.game.scaler, self.game_field)  # Fallback to basic
             self.zombies.append(zombie)
             self.current_wave_zombies.append(zombie)
-            self.initial_wave_hp += zombie.health + zombie.cone_health
+            self.initial_wave_hp += zombie.health + zombie.cone_health + zombie.bucket_health
 
         self.wave_active = True
         self.wave_timer = 0
@@ -997,12 +1022,12 @@ class MainGame:
             screen.blit(fps_text, (self.game.width - fps_text.get_width() - 10, 10 + wave_text.get_height() + 10))
             # draw zombie info
             for zombie in self.zombies:
-                z_text = self.game.small_font.render(f"{zombie.z_type} HP:{zombie.health} Cone:{zombie.cone_health}", True, (255, 0, 0))
+                z_text = self.game.small_font.render(f"{zombie.z_type} HP:{zombie.health} Cone:{zombie.cone_health} Bucket:{zombie.bucket_health}", True, (255, 0, 0))
                 screen.blit(z_text, (zombie.x, zombie.y - 25))
             # draw plant names
             for row in range(self.game_field.rows):
                 for col in range(self.game_field.cols):
-                    plant = self.game_field.grid[row][col]['plant']
+                    plant = self.game_field.grid[row][col]
                     if plant:
                         x = self.game_field.field_x + col * self.game_field.cell_width + self.game_field.cell_width // 2
                         y = self.game_field.field_y + row * self.game_field.cell_height + self.game_field.cell_height // 2
@@ -1088,28 +1113,23 @@ class Menu:
         # level buttons
         self.level_buttons = []
         LEVEL_DATA = json.load(open('levels.json'))
-        max_per_row = 10
-        spacing_x = 200
-        spacing_y = 200
-        start_x = 200
-        start_y = 200
+        positions = [(200, 200), (400, 200), (600, 200), (800, 200), (1000, 200), (1200, 200), (1400, 200), (1600, 200)]  # for 4 levels
         for i, (level_key, level_data) in enumerate(LEVEL_DATA.items()):
-            row = i // max_per_row
-            col = i % max_per_row
-            x = start_x + col * spacing_x
-            y = start_y + row * spacing_y
             if 'background1.png' in level_data['background']:
                 icon_index = 0  # day
             elif 'background2.png' in level_data['background']:
                 icon_index = 1  # night
-            if 'background3.png' in level_data['background']:
-                icon_index = 2  # day
+            elif 'background3.png' in level_data['background']:
+                icon_index = 2  # night
             elif 'background4.png' in level_data['background']:
                 icon_index = 3  # night
+            elif 'background5.png' in level_data['background']:
+                icon_index = 4  # night
             else:
                 icon_index = 0
+                
             button = {
-                'rect': pygame.Rect(x, y, self.window_image.get_width(), self.window_image.get_height()),
+                'rect': pygame.Rect(positions[i][0], positions[i][1], self.window_image.get_width(), self.window_image.get_height()),
                 'level': level_key,
                 'icon': self.thumbnails_list[icon_index],
                 'hovered': False
@@ -1421,7 +1441,10 @@ class Game:
                 elif self.state == 'level_menu':
                     self.menu.draw(self.screen)
             pygame.display.flip()
-            self.sound_manager.play_music(self.state)
+            if self.state == 'game':
+                self.sound_manager.play_music(self.main_game.music)
+            else:
+                self.sound_manager.play_music(self.state)
 
     def update_loop(self):
         clock = pygame.time.Clock()
