@@ -67,13 +67,13 @@ class Almanac:
         self.selected_plant = 'Peashooter'
         self.plant_buttons = []
         cols = 8
-        rows = 6
-        button_width = self.scaler.scale_x(75)
-        button_height = self.scaler.scale_y(105)
-        x_start = self.scaler.scale_x(200)
-        y_start = self.scaler.scale_y(150)
-        spacing_x = self.scaler.scale_x(90)
-        spacing_y = self.scaler.scale_y(115)
+        rows = 7
+        button_width = self.scaler.scale_x(90)
+        button_height = self.scaler.scale_y(125)
+        x_start = self.scaler.scale_x(287)
+        y_start = self.scaler.scale_y(170)
+        spacing_x = self.scaler.scale_x(93)
+        spacing_y = self.scaler.scale_y(140)
         for i, plant in enumerate(self.plants_list):
             if i >= cols * rows:
                 break
