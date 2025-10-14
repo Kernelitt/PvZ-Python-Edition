@@ -1,23 +1,15 @@
-# TODO: Add Mechanics for Remaining Plants, Water Cells, and New Levels
+# TODO: Доработка меню выбора уровней
 
-## 1. Update levels.json
-- [x] Add levels 3-1, 3-2, 4-1, 4-2 with water_rows: [2,3], background: "background3.png" for pool, "background4.png" for fog, waves: 10/20, etc.
+## добавить прогрессию по уровням тоесть на 1-2 не попасть пока 1-1 не пройден
+    1. images/MiniGame_trophy.png - можно использовать чтобы отметить что уровень пройден (нужно распологать на тех же координатах что и self.window_image)
+    2. images/lock.png - можно использовать чтобы отметить что уровень закрыт (нужно отображать в центре self.window_image)
+    3. нужно создать словарь user. он будет использоваться для хранения всего прогресса в игре (пройденные уровни, растения в коллекции). изначально у игрока будет только Peashooter
+    4. нужно добавить награду за прохождение уровней (например новые растения)
 
-## 2. Modify main.py GameField
-- [x] Add water_rows from level_data
-- [x] Draw water tiles for water rows (blue instead of green)
-- [x] Restrict planting: only LilyPad on water, aquatic plants on land/LilyPad
-- [ ] Allow planting on LilyPad by modifying grid to hold base + planted
-
-## 3. Update plants.py
-- [ ] Add shooting to PuffShroom (spores)
-- [ ] Add sun production to SunShroom
-- [ ] Add fume shooting to FumeShroom
-- [ ] Add Chomper eating mechanics
-- [ ] Make Repeater shoot two peas
-- [ ] Modify LilyPad to allow planted_plant
-
-## 4. Test
-- [ ] Test planting restrictions
-- [ ] Test plant mechanics
-- [ ] Play new levels
+## Implementation Steps
+- [ ] Load trophy and lock images in Menu.__init__
+- [ ] Determine unlocked and completed status for each level in Menu.__init__
+- [ ] Modify Menu.draw to show lock for locked levels and trophy for completed
+- [ ] Modify Menu.handle_events to prevent clicking locked levels
+- [ ] Modify SeedSelect.__init__ to filter plants by unlocked_plants
+- [ ] Modify MainGame win condition to update user progress and save user.json

@@ -47,7 +47,7 @@ class Slider:
 from definitions import *
 from plants import *
 from zombie_animations import *
-from zombies import Zombie, ConeheadZombie, BucketheadZombie
+from zombies import Zombie, ConeheadZombie, BucketheadZombie, PoleVaulterZombie
 from preloader import preload_all, preload_ui
 
 class SoundManager:
@@ -80,8 +80,8 @@ class SoundManager:
             'zombie_impact1': 'sounds/splat.ogg',
             'zombie_impact2': 'sounds/splat2.ogg',
             'zombie_impact3': 'sounds/splat3.ogg',
-            'cone_impact1': 'sounds/plasichit.ogg',
-            'cone_impact2': 'sounds/plasichit2.ogg',
+            'cone_impact1': 'sounds/plastichit.ogg',
+            'cone_impact2': 'sounds/plastichit2.ogg',
             'bucket_impact1': 'sounds/shieldhit.ogg',
             'bucket_impact2': 'sounds/shieldhit2.ogg',
             'zombie_frozen': 'sounds/frozen.ogg',
@@ -385,6 +385,7 @@ class MainMenu:
         self.image_buttons.append(quit_button)
 
     def start_game(self):
+        self.game.menu = Menu(game=self.game)
         self.game.state = 'level_menu'
 
     def open_minigames(self):
@@ -455,7 +456,7 @@ class SeedSelect:
         self.seed_chooser_bg = pygame.transform.scale(self.seed_chooser_bg, (self.seed_chooser_bg.get_width() * 1.8, self.seed_chooser_bg.get_height() * 1.8))
 
         # Seed selection data
-        self.all_plants = [p for p in PLANT_SUN_COST.keys() if p not in self.banned_plants]
+        self.all_plants = [p for p in PLANT_SUN_COST.keys() if p in self.game.user['unlocked_plants'] and p not in self.banned_plants]
         self.selected_plants = []
         self.plant_buttons = []
         self.start_game_button = None
@@ -490,10 +491,10 @@ class SeedSelect:
         self.update_start_button()
 
     def update_start_button(self):
-        if len(self.selected_plants) == 6:
+        if len(self.selected_plants) > 0:
             if self.start_game_button is None:
                 self.start_game_button = SimplePygameButton(
-                    (self.game.scaler.scale_x((BASE_WIDTH - 300) // 2), self.game.scaler.scale_y(800)),
+                    (self.game.scaler.scale_x(250), self.game.scaler.scale_y(900)),
                     (self.game.scaler.scale_x(300), self.game.scaler.scale_y(60)),
                     [("Start Game", (self.game.scaler.scale_x(50), self.game.scaler.scale_y(15)))],
                     self.begin_game,
@@ -716,7 +717,6 @@ class MainGame:
         else:
             self.is_day = True
 
-        print(self.is_day)
         if 'background1.png' in self.level_data['background']:
             self.music = 'music_day'
         elif 'background2.png' in self.level_data['background']:
@@ -729,6 +729,9 @@ class MainGame:
             self.music = 'music_roof'
         else:
             self.music = 'X-10'
+
+        self.zombies_on_level = self.level_data['zombies']
+
         self.game_field = GameField(game.scaler, game.width, game.height, game)
         self.sun_count = self.level_data['start_sun']
         self.selected_seed = None
@@ -747,7 +750,7 @@ class MainGame:
         self.game_won = False
         self.sky_suns = []
         self.sky_sun_timer = 0.0
-        self.sky_sun_interval = random.uniform(10.0, 15.0)
+        self.sky_sun_interval = random.uniform(3.0, 6.0)
         self.sky_sun_timer = self.sky_sun_interval  # Start falling immediately
         # Initialize seed recharge timers as mutable dict with 0 (ready) for each plant
         self.seed_recharge_timers = {plant: 0 for plant in PLANT_RECHARGE}
@@ -896,7 +899,7 @@ class MainGame:
                 new_sun = Sun(sun_x, sun_y, self.game, sun_type='sky')
                 self.sky_suns.append(new_sun)
                 self.sky_sun_timer = 0.0
-                self.sky_sun_interval = random.uniform(2.0, 5.0)  # shorter interval for testing
+                self.sky_sun_interval = random.uniform(6.0, 9.0)  # shorter interval for testing
 
         # Update suns from all sunflowers
         for row in range(self.game_field.rows):
@@ -936,7 +939,7 @@ class MainGame:
 
         # Wave logic starts after initial timer
         # If no active wave, start a new wave
-        if not self.wave_active and self.wave_number < self.max_waves:
+        if not self.wave_active and self.wave_number <= self.max_waves:
             self.start_wave()
 
         # Update zombies
@@ -976,17 +979,26 @@ class MainGame:
         self.wave_timer += dt
 
         # Wave ends if total HP < 50% initial or 25 seconds passed
-        if total_hp < self.initial_wave_hp * 0.5 or self.wave_timer >= 25.0:
+        if total_hp < self.initial_wave_hp * 0.5 or self.wave_timer >= 25.0 and self.wave_number < self.max_waves:
             self.wave_active = False
             self.wave_timer = 0.0
             self.wave_number += 1
-            if self.wave_number > self.max_waves:
-                print("You win!")
-                self.game.thread_running = False
-                self.game.fade_alpha = 0
-                self.game.fade_color = (255, 255, 255)
-                self.game.state = 'win'
-                self.game.sound_manager.play_music('win')
+
+        if self.wave_number >= self.max_waves and not self.zombies:
+            self.game.user['completed_levels'].add(self.game.selected_level)
+            # Reward: unlock Sunflower if not already unlocked
+            if self.level_data["unlocked_plants"] not in self.game.user['unlocked_plants']:
+                self.game.user['unlocked_plants'].append(self.level_data["unlocked_plants"][0])
+            # Save to user.json
+            with open('user.json', 'w') as f:
+                json.dump({'completed_levels': list(self.game.user['completed_levels']), 'unlocked_plants': self.game.user['unlocked_plants']}, f)   
+
+            print("You win!")
+            self.game.thread_running = False
+            self.game.fade_alpha = 0
+            self.game.fade_color = (255, 255, 255)
+            self.game.state = 'win'
+            self.game.sound_manager.play_music('win')
 
     def start_wave(self):
         # Calculate wave points based on wave number
@@ -1000,7 +1012,7 @@ class MainGame:
 
         # Generate zombies to fill wave points
         while points_left > 0:
-            possible = [z for z in ZOMBIE_COST if ZOMBIE_COST[z] <= points_left]
+            possible = [z for z in ZOMBIE_COST if ZOMBIE_COST[z] <= points_left and z in self.zombies_on_level]
             if not possible:
                 break
             z_type = random.choice(possible)
@@ -1013,14 +1025,11 @@ class MainGame:
 
         for i, z_type in enumerate(zombies_to_spawn):
             lane = random.randint(0,4)
-            if z_type == 'Basic Zombie':
-                zombie = Zombie(lane, self.game.scaler, self.game_field)
-            elif z_type == 'Conehead Zombie':
-                zombie = ConeheadZombie(lane, self.game.scaler, self.game_field)
-            elif z_type == 'Buckethead Zombie':
-                zombie = BucketheadZombie(lane, self.game.scaler, self.game_field)
-            else:
+            try:
+                zombie = globals()[z_type](lane, self.game.scaler, self.game_field)
+            except:
                 zombie = Zombie(lane, self.game.scaler, self.game_field)  # Fallback to basic
+                
             self.zombies.append(zombie)
             self.current_wave_zombies.append(zombie)
             self.initial_wave_hp += zombie.health + zombie.cone_health + zombie.bucket_health
@@ -1181,6 +1190,9 @@ class Menu:
         self.close_button = preloaded_images['almanac_closebutton']
         self.close_highlight = preloaded_images['almanac_closebuttonhighlight']
         self.thumbnails = preloaded_images['survival_thumbnails']
+        # Load trophy and lock images
+        self.trophy_image = pygame.image.load('images/MiniGame_trophy.png')
+        self.lock_image = pygame.image.load('images/lock.png')
         # cut thumbnails into list
         self.thumbnail_width = self.thumbnails.get_width() // 11
         self.thumbnail_height = self.thumbnails.get_height()
@@ -1191,26 +1203,48 @@ class Menu:
         # level buttons
         self.level_buttons = []
         LEVEL_DATA = json.load(open('levels.json'))
-        positions = [(200, 200), (400, 200), (600, 200), (800, 200), (1000, 200), (1200, 200), (1400, 200), (1600, 200)]  # for 8 levels
+        # Generate grid positions: 8 columns, 6 rows, up to 48 levels
+        cols = 8
+        rows = 6
+        start_x = 200
+        start_y = 200
+        step_x = 200
+        step_y = 150
+        positions = []
+        for r in range(rows):
+            for c in range(cols):
+                x = start_x + c * step_x
+                y = start_y + r * step_y
+                positions.append((x, y))
+        level_keys = list(LEVEL_DATA.keys())
         for i, (level_key, level_data) in enumerate(LEVEL_DATA.items()):
+            if i >= len(positions):
+                break  # Limit to 48 levels
             if 'background1.png' in level_data['background']:
                 icon_index = 0  # day
             elif 'background2.png' in level_data['background']:
                 icon_index = 1  # night
             elif 'background3.png' in level_data['background']:
-                icon_index = 2  # night
+                icon_index = 2  # pool
             elif 'background4.png' in level_data['background']:
-                icon_index = 3  # night
+                icon_index = 3  # fog
             elif 'background5.png' in level_data['background']:
-                icon_index = 4  # night
+                icon_index = 4  # roof
             else:
                 icon_index = 0
-                
+
+            # Determine if level is unlocked and completed
+            level_index = level_keys.index(level_key)
+            unlocked = level_index == 0 or level_keys[level_index - 1] in self.game.user['completed_levels']
+            completed = level_key in self.game.user['completed_levels']
+
             button = {
                 'rect': pygame.Rect(positions[i][0], positions[i][1], self.window_image.get_width(), self.window_image.get_height()),
                 'level': level_key,
                 'icon': self.thumbnails_list[icon_index],
-                'hovered': False
+                'hovered': False,
+                'unlocked': unlocked,
+                'completed': completed
             }
             self.level_buttons.append(button)
         self.close_rect = pygame.Rect(20, 1030, self.close_button.get_width(), self.close_button.get_height())
@@ -1226,7 +1260,7 @@ class Menu:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     for button in self.level_buttons:
-                        if button['hovered']:
+                        if button['hovered'] and button['unlocked']:
                             self.game.selected_level = button['level']
                             self.game.load_background()
                             self.game.seed_select = SeedSelect(self.game, self.game.levels[self.game.selected_level]['background'], self.game.levels[self.game.selected_level]['banned_plants'])
@@ -1250,6 +1284,14 @@ class Menu:
             level_text = self.game.font.render(button['level'], True, (0,0,0))
             text_rect = level_text.get_rect(center=(button['rect'].centerx, button['rect'].centery + 40))
             screen.blit(level_text, text_rect)
+            # Draw lock if not unlocked
+            if not button['unlocked']:
+                lock_rect = self.lock_image.get_rect(center=button['rect'].center)
+                screen.blit(self.lock_image, lock_rect)
+            # Draw trophy if completed
+            elif button['completed']:
+                trophy_rect = button['rect']
+                screen.blit(self.trophy_image, trophy_rect)
         close_img = self.close_highlight if self.close_hovered else self.close_button
         screen.blit(close_img, self.close_rect)
 
@@ -1286,6 +1328,14 @@ class Game:
         # Load levels
         self.levels = json.load(open('levels.json'))
         self.selected_level = '1-1'
+
+        # Load or initialize user progress
+        try:
+            with open('user.json', 'r') as f:
+                self.user = json.load(f)
+                self.user['completed_levels'] = set(self.user['completed_levels'])
+        except FileNotFoundError:
+            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter']}
 
         # Load images
         self.seedbank_image = pygame.image.load('images/seedbank.png')

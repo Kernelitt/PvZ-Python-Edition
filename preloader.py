@@ -1,10 +1,5 @@
 import pygame
-from zombie_animations import (
-    get_animation_frames, ZOMBIE_ANIMATIONS, PEASHOOTER_ANIMATIONS, SUNFLOWER_ANIMATIONS,
-    CHERRYBOMB_ANIMATIONS, WALLNUT_ANIMATIONS, POTATO_MINE_ANIMATIONS, SNOW_PEA_ANIMATIONS,
-    CHOMPER_ANIMATIONS, REPEATER_ANIMATIONS, PUFF_SHROOM_ANIMATIONS, SUN_SHROOM_ANIMATIONS,
-    FUME_SHROOM_ANIMATIONS, GRAVE_BUSTER_ANIMATIONS, SUN_ANIMATIONS, LILYPAD_ANIMATIONS
-)
+from zombie_animations import *
 
 preloaded_images = {}
 
@@ -15,6 +10,10 @@ def preload_zombie_animations():
         preloaded_images[f'zombie_{action}'] = [pygame.image.load(f'animations/basic_zombie/Zombie{f:04d}.png').convert_alpha() for f in frames]
         preloaded_images[f'cone_{action}'] = [pygame.image.load(f'animations/cone_zombie/Cone{f:04d}.png').convert_alpha() for f in frames]
         preloaded_images[f'bucket_{action}'] = [pygame.image.load(f'animations/bucket_zombie/Bucket{f:04d}.png').convert_alpha() for f in frames]
+    # Preload pole vaulter animations
+    for action in POLE_VAULTER_ZOMBIE_ANIMATIONS:
+        frames = get_animation_frames(action, 'pole_vaulter_zombie')
+        preloaded_images[f'pole_vaulter_{action}'] = [pygame.image.load(f'animations/Zombie_polevaulter/Zombie_polevaulter{f:04d}.png').convert_alpha() for f in frames]
     print("Zombie animations preloaded.")
 
 def preload_plant_animations():

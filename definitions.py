@@ -184,9 +184,10 @@ ZOMBIE_HEALTH = {
 }
 
 ZOMBIE_COST = {
-    'Basic Zombie': 1,
-    'Conehead Zombie': 2,
-    'Buckethead Zombie': 4
+    'BasicZombie': 1,
+    'ConeheadZombie': 2,
+    'PoleVaulterZombie':2,
+    'BucketheadZombie': 4
 }
 
 PROJECTILE_TEXTURES_PATH = {
@@ -204,7 +205,7 @@ PROJECTILE_TEXTURES_PATH = {
 
 WAVE_OPTIONS = {
     "Every": 2,
-    "Points":2
+    "Points":1
 }
 
 # Nocturnal plants that sleep during the day

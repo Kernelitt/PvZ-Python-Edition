@@ -1,7 +1,7 @@
 import pygame
 import random
 from definitions import *
-from zombie_animations import get_animation_frames, ZOMBIE_ANIMATIONS
+from zombie_animations import *
 from preloader import preloaded_images
 from pygame import surfarray
 
@@ -215,4 +215,141 @@ class BucketheadZombie(Zombie):
         super().__init__(lane, scaler, game_field)
         self.z_type = 'Buckethead Zombie'
         self.bucket_health = 1100
+
+class PoleVaulterZombie(Zombie):
+    def __init__(self, lane, scaler, game_field):
+        super().__init__(lane, scaler, game_field)
+        self.z_type = 'Pole Vaulter Zombie'
+        self.health = 500
+        self.initial_health = self.health
+        self.has_pole = True
+        self.jumped = False
+
+        # Use preloaded animation frames for pole vaulter
+        self.animation_frames = {}
+        for action in POLE_VAULTER_ZOMBIE_ANIMATIONS:
+            self.animation_frames[action] = preloaded_images[f'pole_vaulter_{action}']
+
+        self.current_action = 'run'
+        self.frame_index = 0
+        self.animation_timer = 0.0
+        self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+
+    def update(self, dt):
+        self.slow_timer = max(0, self.slow_timer - dt)
+        self.frozen_effect = self.slow_timer > 0
+        self.damage_flash_timer = max(0, self.damage_flash_timer - dt)
+        dt_effective = dt / 2 if self.frozen_effect else dt
+
+        # Check if health is below 26%
+        if self.health <= self.initial_health * 0.26 and self.health > 0:
+            self.low_health_timer += dt
+            if self.low_health_timer >= 0.01:
+                self.health -= 2
+                self.low_health_timer = 0.0
+                if self.health <= 0:
+                    self.health = 0
+
+        if self.health <= self.initial_health * 0.26 and not self.dying:
+            self.dying = True
+            self.current_action = 'death'
+            self.frame_index = 0
+            self.animation_timer = 0.0
+            self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+
+        if self.dying:
+            if self.current_action == 'death':
+                self.animation_timer += dt_effective
+                if self.animation_timer >= self.frame_duration:
+                    self.animation_timer -= self.frame_duration
+                    self.frame_index += 1
+                    if self.frame_index >= len(self.animation_frames[self.current_action]):
+                        self.to_remove = True
+                        return
+            return
+
+        # Find the rightmost plant in the lane ahead
+        target_col = None
+        for col in range(self.game_field.cols - 1, -1, -1):
+            if self.game_field.grid[self.lane][col] is not None:
+                plant_x = self.game_field.field_x + col * self.game_field.cell_width
+                if self.x > plant_x:
+                    target_col = col
+                    break
+
+        if target_col is not None and not self.jumped:
+            # Target the plant
+            plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
+            if self.x > plant_x + self.game_field.cell_width / 2:
+                # Start jump animation if close enough
+                if self.x - plant_x < 200 and self.current_action != 'jump':
+                    self.current_action = 'jump'
+                    self.frame_index = 0
+                    self.animation_timer = 0.0
+                    self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                elif self.current_action == 'jump':
+                    # Update jump animation
+                    self.animation_timer += dt_effective
+                    if self.animation_timer >= self.frame_duration:
+                        self.animation_timer -= self.frame_duration
+                        self.frame_index += 1
+                        if self.frame_index >= len(self.animation_frames[self.current_action]):
+                            # Jump completed, teleport to next cell
+                            self.x = plant_x + self.game_field.cell_width
+                            self.jumped = True
+                            self.current_action = 'walk'
+                            self.frame_index = 0
+                            self.animation_timer = 0.0
+                            self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                else:
+                    # Run towards plant
+                    if self.current_action != 'run':
+                        self.current_action = 'run'
+                        self.frame_index = 0
+                        self.animation_timer = 0.0
+                        self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                    self.animation_timer += dt_effective
+                    if self.animation_timer >= self.frame_duration:
+                        self.animation_timer -= self.frame_duration
+                        self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
+                    self.x -= self.speed * dt_effective
+            else:
+                # At plant, damage it
+                if self.current_action != 'attack':
+                    self.current_action = 'attack'
+                    self.frame_index = 0
+                    self.animation_timer = 0.0
+                    self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                self.last_sound_time += dt_effective
+                self.damage_timer += dt_effective
+                if self.last_sound_time > 0.75:
+                    self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
+                    self.last_sound_time = 0.0
+                if self.damage_timer > 0.013:
+                    plant = self.game_field.grid[self.lane][target_col]
+                    if hasattr(plant, 'health'):
+                        plant.health -= 1
+                        if plant.health <= 0:
+                            self.game_field.grid[self.lane][target_col] = None
+                            self.game_field.game.sound_manager.play_sound('plant_break')
+                    self.damage_timer = 0.0
+        else:
+            # No plant or already jumped, walk normally
+            if self.current_action != 'walk':
+                self.current_action = 'walk'
+                self.frame_index = 0
+                self.animation_timer = 0.0
+                self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+            self.animation_timer += dt_effective
+            if self.animation_timer >= self.frame_duration:
+                self.animation_timer -= self.frame_duration
+                self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
+            self.x -= self.speed * dt_effective
+
+        self.rect.x = int(self.x)
+        self.rect.y = int(self.y)
+        self.cone_rect.x = int(self.x)
+        self.cone_rect.y = int(self.y)
+        self.bucket_rect.x = int(self.x)
+        self.bucket_rect.y = int(self.y)
 

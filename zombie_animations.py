@@ -22,7 +22,45 @@ ZOMBIE_ANIMATIONS = {
         'loop': False,
         'fps': 24
     },
-    # Add more animations as needed, e.g., 'idle', 'hurt', etc.
+}
+
+POLE_VAULTER_ZOMBIE_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 13,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
+    'run': {
+        'start_frame': 13,
+        'end_frame': 50,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
+    'walk': {
+        'start_frame': 94,
+        'end_frame': 138,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
+    'jump': {
+        'start_frame': 51,
+        'end_frame': 93,
+        'loop': True,
+        'fps': 24  # frames per second for this animation
+    },
+    'attack': {
+        'start_frame': 166,
+        'end_frame': 193,
+        'loop': True,
+        'fps': 24
+    },
+    'death': {
+        'start_frame': 139,
+        'end_frame': 165,
+        'loop': False,
+        'fps': 24
+    },
 }
 
 PEASHOOTER_ANIMATIONS = {
@@ -395,6 +433,8 @@ def get_animation_frames(action, anim_type='zombie'):
         anim = SUN_ANIMATIONS[action]
     elif anim_type == 'main_menu' and action in MAIN_MENU:
         anim = MAIN_MENU[action]
+    elif anim_type == 'pole_vaulter_zombie' and action in POLE_VAULTER_ZOMBIE_ANIMATIONS:
+        anim = POLE_VAULTER_ZOMBIE_ANIMATIONS[action]
     else:
         return []
     return list(range(anim['start_frame'], anim['end_frame'] + 1))
