@@ -5,6 +5,9 @@ import threading
 import queue
 from simple_framework import SimpleSettingsWindow, SimpleWindowScaler, SimplePygameField, SimplePygameButton, SimpleImageButton
 
+from os import getcwd
+print(getcwd())
+
 class Slider:
     def __init__(self, position, width, height, min_value, max_value, initial_value, on_change):
         self.position = position  # (x, y)
@@ -707,6 +710,13 @@ class MainGame:
     def __init__(self, game, level_name):
         self.game = game
         self.level_data = game.levels[level_name]
+        print(self.level_data['background'])
+        if self.level_data['background'] in ['background2.png', 'background4.png', 'background6.png']:
+            self.is_day = False
+        else:
+            self.is_day = True
+
+        print(self.is_day)
         if 'background1.png' in self.level_data['background']:
             self.music = 'music_day'
         elif 'background2.png' in self.level_data['background']:
@@ -876,16 +886,17 @@ class MainGame:
                 if self.seed_recharge_timers[plant_name] < 0:
                     self.seed_recharge_timers[plant_name] = 0
 
-        # Spawn sky suns
-        self.sky_sun_timer += dt
-        if self.sky_sun_timer >= self.sky_sun_interval:
-            # Spawn at random x at top
-            sun_x = random.randint(0, self.game.width - 80)  # assuming sun size 80
-            sun_y = 0  # at top of screen
-            new_sun = Sun(sun_x, sun_y, self.game, sun_type='sky')
-            self.sky_suns.append(new_sun)
-            self.sky_sun_timer = 0.0
-            self.sky_sun_interval = random.uniform(2.0, 5.0)  # shorter interval for testing
+        # Spawn sky suns only during day
+        if self.is_day:
+            self.sky_sun_timer += dt
+            if self.sky_sun_timer >= self.sky_sun_interval:
+                # Spawn at random x at top
+                sun_x = random.randint(0, self.game.width - 80)  # assuming sun size 80
+                sun_y = 0  # at top of screen
+                new_sun = Sun(sun_x, sun_y, self.game, sun_type='sky')
+                self.sky_suns.append(new_sun)
+                self.sky_sun_timer = 0.0
+                self.sky_sun_interval = random.uniform(2.0, 5.0)  # shorter interval for testing
 
         # Update suns from all sunflowers
         for row in range(self.game_field.rows):
@@ -1180,7 +1191,7 @@ class Menu:
         # level buttons
         self.level_buttons = []
         LEVEL_DATA = json.load(open('levels.json'))
-        positions = [(200, 200), (400, 200), (600, 200), (800, 200), (1000, 200), (1200, 200), (1400, 200), (1600, 200)]  # for 4 levels
+        positions = [(200, 200), (400, 200), (600, 200), (800, 200), (1000, 200), (1200, 200), (1400, 200), (1600, 200)]  # for 8 levels
         for i, (level_key, level_data) in enumerate(LEVEL_DATA.items()):
             if 'background1.png' in level_data['background']:
                 icon_index = 0  # day
@@ -1303,6 +1314,10 @@ class Game:
             'Snow Pea': pygame.image.load('animations/Plants/snowpea/SnowPea0080.png'),
             'Chomper': pygame.image.load('animations/Plants/chomper/Chomper0001.png'),
             'Repeater': pygame.image.load('animations/Plants/repeater/Repeater0080.png'),
+            'Puff Shroom': pygame.image.load('animations/Plants/puffshroom/PuffShroom0005.png'),
+            'Sun Shroom': pygame.image.load('animations/Plants/sunshroom/SunShroom0005.png'),
+            'Fume Shroom': pygame.image.load('animations/Plants/fumeshroom/FumeShroom0005.png'),
+            'Grave Buster': pygame.image.load('animations/Plants/gravebuster/GraveBuster0001.png'),
             'Lily Pad': pygame.image.load('animations/Plants/lilypad/LilyPad0001.png'),
         }
 

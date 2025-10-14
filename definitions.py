@@ -206,3 +206,15 @@ WAVE_OPTIONS = {
     "Every": 2,
     "Points":2
 }
+
+# Nocturnal plants that sleep during the day
+NOCTURNAL_PLANTS = [
+    'Puff Shroom',
+    'Sun Shroom',
+    'Fume Shroom',
+    'Hypno Shroom',
+    'Scaredy Shroom',
+    'Ice Shroom',
+    'Doom Shroom',
+    'Sea Shroom',
+]

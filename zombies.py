@@ -14,6 +14,7 @@ class Zombie:
         self.normal_speed = 60 * 1 + random.choice([-1,1]) / 10
         self.speed = self.normal_speed
         self.health = 270
+        self.initial_health = self.health
         self.cone_health = 0
         self.bucket_health = 0
         self.game_field = game_field
@@ -23,6 +24,7 @@ class Zombie:
         self.slow_timer = 0.0
         self.frozen_effect = False
         self.damage_flash_timer = 0.0
+        self.low_health_timer = 0.0
         self.rect = pygame.Rect(self.x, self.y, 50, 100)
         self.cone_rect = pygame.Rect(self.x, self.y, 50, 100)
         self.bucket_rect = pygame.Rect(self.x, self.y, 50, 100)
@@ -73,7 +75,16 @@ class Zombie:
         self.damage_flash_timer = max(0, self.damage_flash_timer - dt)
         dt_effective = dt / 2 if self.frozen_effect else dt
 
-        if self.health <= 0 and not self.dying:
+        # Check if health is below 26%
+        if self.health <= self.initial_health * 0.26 and self.health > 0:
+            self.low_health_timer += dt
+            if self.low_health_timer >= 0.01:
+                self.health -= 2
+                self.low_health_timer = 0.0
+                if self.health <= 0:
+                    self.health = 0
+
+        if self.health <= self.initial_health * 0.26 and not self.dying:
             self.dying = True
             self.current_action = 'death'
             self.frame_index = 0
@@ -162,7 +173,7 @@ class Zombie:
         if self.bucket_health > 0:
             bucket_frame = self.bucket_animation_frames[self.current_action][self.frame_index]
             scaled_bucket = pygame.transform.scale(bucket_frame, (190 // 1.2, 330 // 1.2))
-            combined_surface.blit(scaled_bucket, (135, 0))  # relative positions
+            combined_surface.blit(scaled_bucket, (105, 0))  # relative positions
         # If cone health > 0, draw cone on top
         if self.cone_health > 0:
             cone_frame = self.cone_animation_frames[self.current_action][self.frame_index]

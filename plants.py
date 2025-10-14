@@ -7,9 +7,10 @@ from zombie_animations import *
 from preloader import preloaded_images
 
 class Projectile:
-    def __init__(self, x, y, speed, damage, image, angle=0, proj_type='pea'):
+    def __init__(self, x, y, speed, damage, image, angle=0, proj_type='pea', max_distance=0):
         self.x = x
         self.y = y
+        self.start_x = x
         self.speed = speed  # pixels per second
         self.damage = damage
         self.image = image
@@ -17,6 +18,7 @@ class Projectile:
         self.rect = self.image.get_rect(center=(self.x, self.y))
         self.active = True
         self.proj_type = proj_type
+        self.max_distance = max_distance
 
     def update(self, dt):
         self.x += self.speed * dt * math.cos(self.angle)
@@ -24,6 +26,9 @@ class Projectile:
         self.rect.center = (int(self.x), int(self.y))
         # Deactivate if off screen (assuming screen width 1920, height 1080)
         if self.x > 1920 or self.x < 0 or self.y > 1080 or self.y < 0:
+            self.active = False
+        # Deactivate if exceeded max distance
+        if self.max_distance > 0 and self.x - self.start_x > self.max_distance:
             self.active = False
 
     def draw(self, screen):
@@ -762,6 +767,7 @@ class PuffShroom(Plant):
         self.damage = PLANT_DAMAGE.get("Puffshroom", 20)
         self.fire_rate = PLANT_TIMERS.get("Puffshroom Fire Rate", 1500) / 1000.0
         self.projectile_image = pygame.image.load(PROJECTILE_TEXTURES_PATH["Spore"]).convert_alpha()
+        self.asleep = not self.game.main_game.is_day  # Sleep during day
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -770,23 +776,72 @@ class PuffShroom(Plant):
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
+        self.blink_frame_index = 0
+        self.blink_timer = 0.0
+        self.shoot_frame_index = 0
+        self.shoot_timer = 0.0
+        self.sleep_frame_index = 0
+        self.sleep_timer = 0.0
 
     def update(self, dt, zombies):
+        self.asleep = self.game.main_game.is_day  # Sleep during day
+
+        if self.asleep:
+            # Update sleep animation
+            self.sleep_timer += dt
+            sleep_fps = PUFF_SHROOM_ANIMATIONS['sleep']['fps']
+            if self.sleep_timer >= 1.0 / sleep_fps:
+                self.sleep_timer -= 1.0 / sleep_fps
+                self.sleep_frame_index = (self.sleep_frame_index + 1) % len(self.animation_frames['sleep'])
+            return  # No actions when asleep
+
+        # Update idle animation (pauses during blink/shoot)
+        if self.current_action not in ['blink', 'shoot']:
+            self.idle_timer += dt
+            idle_fps = PUFF_SHROOM_ANIMATIONS['idle']['fps']
+            if self.idle_timer >= 1.0 / idle_fps:
+                self.idle_timer -= 1.0 / idle_fps
+                self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
         # Check for targets within 3 cells
         cell_width = self.game.main_game.game_field.cell_width
         has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x and z.x - self.x <= 3 * cell_width)
         if has_target:
             current_time = time.time()
             if current_time - self.last_action_time >= self.fire_rate:
+                self.current_action = 'shoot'
+                self.shoot_frame_index = 0
+                self.shoot_timer = 0.0
                 self.shoot()
                 self.last_action_time = current_time
 
-        # Update idle animation
-        self.idle_timer += dt
-        idle_fps = PUFF_SHROOM_ANIMATIONS['idle']['fps']
-        if self.idle_timer >= 1.0 / idle_fps:
-            self.idle_timer -= 1.0 / idle_fps
-            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+        # Random blink
+        if self.current_action == 'idle' and self.idle_frame_index == 0 and random.random() < 0.1:
+            self.current_action = 'blink'
+            self.blink_frame_index = 0
+            self.blink_timer = 0.0
+
+        # Update blink animation
+        if self.current_action == 'blink':
+            self.blink_timer += dt
+            blink_fps = PUFF_SHROOM_ANIMATIONS['blink']['fps']
+            if self.blink_timer >= 1.0 / blink_fps:
+                self.blink_timer -= 1.0 / blink_fps
+                self.blink_frame_index += 1
+                if self.blink_frame_index >= len(self.animation_frames['blink']):
+                    self.current_action = 'idle'
+                    self.blink_frame_index = 0
+
+        # Update shoot animation
+        if self.current_action == 'shoot':
+            self.shoot_timer += dt
+            shoot_fps = PUFF_SHROOM_ANIMATIONS['shoot']['fps']
+            if self.shoot_timer >= 1.0 / shoot_fps:
+                self.shoot_timer -= 1.0 / shoot_fps
+                self.shoot_frame_index += 1
+                if self.shoot_frame_index >= len(self.animation_frames['shoot']):
+                    self.current_action = 'idle'
+                    self.shoot_frame_index = 0
 
         # Update projectiles
         for projectile in self.projectiles:
@@ -796,14 +851,25 @@ class PuffShroom(Plant):
         super().update(dt)
 
     def shoot(self):
-        proj_x = self.x + 50
-        proj_y = self.y + 35
-        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='puff')
+        proj_x = self.x + 60
+        proj_y = self.y + 100
+        max_distance = 3 * self.game.main_game.game_field.cell_width
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='puff', max_distance=max_distance)
         self.projectiles.append(new_proj)
         self.game.sound_manager.play_sound('throw')
 
     def draw(self, screen):
-        frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.asleep:
+            frame = self.animation_frames['sleep'][self.sleep_frame_index]
+        else:
+            if self.current_action == 'idle':
+                frame = self.animation_frames['idle'][self.idle_frame_index]
+            elif self.current_action == 'blink':
+                frame = self.animation_frames['blink'][self.blink_frame_index]
+            elif self.current_action == 'shoot':
+                frame = self.animation_frames['shoot'][self.shoot_frame_index]
+            else:
+                frame = self.animation_frames['idle'][self.idle_frame_index]  # fallback
         if self.damage_flash_timer > 0:
             frame = frame.copy()
             tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
@@ -821,6 +887,11 @@ class PuffShroom(Plant):
 class SunShroom(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x, y, "Sun Shroom", game, row)
+        self.sun_production_rate = PLANT_TIMERS.get("Sun-shroom Production Rate", 25000) / 1000.0  # 25 seconds
+        self.grow_time = PLANT_TIMERS.get("Sun-shroom Grow Time", 120000) / 1000.0  # 120 seconds
+        self.sun_timer = 0.0
+        self.grow_timer = self.grow_time
+        self.suns = []  # List to hold spawned suns
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -831,6 +902,31 @@ class SunShroom(Plant):
         self.idle_timer = 0.0
 
     def update(self, dt):
+        # Only produce suns at night
+        if not self.game.main_game.is_day:
+            # Update grow timer
+            self.grow_timer = max(0, self.grow_timer - dt)
+            # Produce sun
+            self.sun_timer += dt
+            if self.sun_timer >= self.sun_production_rate:
+                # Spawn a sun object
+                sun_x = self.x + 50  # Position relative to sunshroom
+                sun_y = self.y + 20
+                if self.grow_timer > 0:
+                    # Small sun
+                    new_sun = Sun(sun_x, sun_y, self.game, sun_type='sunshroom', value=15, size=(80, 80))
+                else:
+                    # Normal sun
+                    new_sun = Sun(sun_x, sun_y, self.game, sun_type='sunshroom', value=25, size=(160, 160))
+                self.suns.append(new_sun)
+                self.sun_timer = 0.0
+
+        # Update suns
+        for sun in self.suns:
+            sun.update(dt)
+        # Remove collected suns
+        self.suns = [s for s in self.suns if not s.collected]
+
         # Update idle animation
         self.idle_timer += dt
         idle_fps = SUN_SHROOM_ANIMATIONS['idle']['fps']
@@ -852,6 +948,9 @@ class SunShroom(Plant):
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
+        # Draw suns
+        for sun in self.suns:
+            sun.draw(screen)
 
 class FumeShroom(Plant):
     def __init__(self, x, y, game, row):
@@ -885,7 +984,7 @@ class FumeShroom(Plant):
             frame_alpha = pygame.surfarray.pixels_alpha(frame)
             tint_alpha[:] = frame_alpha
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
-        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        scaled_frame = pygame.transform.scale(frame, (160, 130))
         screen.blit(scaled_frame, (self.x, self.y))
 
 class GraveBuster(Plant):
@@ -924,11 +1023,13 @@ class GraveBuster(Plant):
         screen.blit(scaled_frame, (self.x, self.y))
 
 class Sun:
-    def __init__(self, x, y, game, sun_type='sunflower'):
+    def __init__(self, x, y, game, sun_type='sunflower', value=25, size=(160, 160)):
         self.x = x
         self.y = y
         self.game = game
         self.sun_type = sun_type  # 'sunflower' or 'sky'
+        self.value = value
+        self.size = size
         self.collected = False
         self.animation_frames = preloaded_images['sun_idle']
         self.current_frame = 0
@@ -942,6 +1043,12 @@ class Sun:
             self.speed_y = -100  # upward
             self.gravity = 200
             self.target_y = y + 100  # fall to below sunflower
+        elif sun_type == 'sunshroom':
+            # Fall straight down 1 cell
+            self.speed_x = 0
+            self.speed_y = 50  # downward
+            self.gravity = 0
+            self.target_y = y + 80  # fall 1 cell (assuming cell width ~80)
         elif sun_type == 'sky':
             # Fall from sky
             self.speed_x = 0
@@ -966,6 +1073,11 @@ class Sun:
                 self.y = self.target_y
                 self.speed_y = 0
                 self.speed_x = 0
+        elif self.sun_type == 'sunshroom':
+            if self.y >= self.target_y:
+                self.y = self.target_y
+                self.speed_y = 0
+                self.speed_x = 0
         elif self.sun_type == 'sky':
             if self.y > self.game.height - 100:
                 self.y = self.game.height - 100
@@ -976,10 +1088,10 @@ class Sun:
         if self.collected:
             return
         frame = self.animation_frames[self.current_frame]
-        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        scaled_frame = pygame.transform.scale(frame, self.size)
         screen.blit(scaled_frame, (self.rect.x, self.rect.y))
 
     def collect(self):
         self.collected = True
-        self.game.main_game.sun_count += 25
+        self.game.main_game.sun_count += self.value
         self.game.sound_manager.play_sound('points')

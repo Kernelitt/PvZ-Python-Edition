@@ -193,22 +193,64 @@ PUFF_SHROOM_ANIMATIONS = {
         'end_frame': 34,
         'loop': False,
         'fps': 24
-    }
+    },
+    'sleep': {
+        'start_frame': 35,
+        'end_frame': 51,
+        'loop': True,
+        'fps': 24
+    },
 }
 
 SUN_SHROOM_ANIMATIONS = {
-    'idle': {
+    'blink': { #small
+        'start_frame': 1,
+        'end_frame': 4,
+        'loop': False,
+        'fps': 24
+    },
+    'idle': { #small
         'start_frame': 5,
         'end_frame': 17,
         'loop': True,
         'fps': 24
-    }
+    },
+    'idle_big': {
+        'start_frame': 5,
+        'end_frame': 17,
+        'loop': True,
+        'fps': 24
+    },
+    'grow': {
+        'start_frame': 28,
+        'end_frame': 38,
+        'loop': False,
+        'fps': 24
+    },
+    'sleep_small': {
+        'start_frame': 18,
+        'end_frame': 27,
+        'loop': True,
+        'fps': 24
+    },
+    'sleep_big': {
+        'start_frame': 39,
+        'end_frame': 51,
+        'loop': True,
+        'fps': 24
+    },
 }
 
 FUME_SHROOM_ANIMATIONS = {
     'idle': {
         'start_frame': 5,
         'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    },
+    'sleep': {
+        'start_frame': 51,
+        'end_frame': 68,
         'loop': True,
         'fps': 24
     }
@@ -229,6 +271,12 @@ HYPNO_SHROOM_ANIMATIONS = {
         'end_frame': 20,
         'loop': True,
         'fps': 24
+    },
+    'sleep': {
+        'start_frame': 21,
+        'end_frame': 40,
+        'loop': True,
+        'fps': 24
     }
 }
 
@@ -236,6 +284,12 @@ SCAREDY_SHROOM_ANIMATIONS = {
     'idle': {
         'start_frame': 6,
         'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    },
+    'sleep': {
+        'start_frame': 71,
+        'end_frame': 86,
         'loop': True,
         'fps': 24
     }
@@ -247,11 +301,23 @@ ICE_SHROOM_ANIMATIONS = {
         'end_frame': 21,
         'loop': True,
         'fps': 24
+    },
+    'sleep': {
+        'start_frame': 22,
+        'end_frame': 38,
+        'loop': True,
+        'fps': 24
     }
 }
 
 DOOM_SHROOM_ANIMATIONS = {
     'idle': {
+        'start_frame': 1,
+        'end_frame': 24,
+        'loop': True,
+        'fps': 24
+    },
+    'sleep': {
         'start_frame': 53,
         'end_frame': 77,
         'loop': True,

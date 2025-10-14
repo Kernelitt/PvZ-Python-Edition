@@ -1,6 +1,6 @@
 import pygame
 from simple_framework import SimpleImageButton, SimplePygameButton
-from definitions import PLANT_SUN_COST
+from definitions import PLANT_SUN_COST, ZOMBIE_HEALTH
 from zombie_animations import get_animation_frames
 
 class Almanac:
@@ -65,15 +65,19 @@ class Almanac:
         # Plants section
         self.plants_list = list(PLANT_SUN_COST.keys())
         self.selected_plant = 'Peashooter'
+
+        # Zombies section
+        self.zombies_list = list(ZOMBIE_HEALTH.keys())
+        self.selected_zombie = 'Basic Zombies Health'
         self.plant_buttons = []
         cols = 8
-        rows = 6
-        button_width = self.scaler.scale_x(75)
-        button_height = self.scaler.scale_y(105)
-        x_start = self.scaler.scale_x(200)
-        y_start = self.scaler.scale_y(150)
-        spacing_x = self.scaler.scale_x(90)
-        spacing_y = self.scaler.scale_y(115)
+        rows = 7
+        button_width = self.scaler.scale_x(90)
+        button_height = self.scaler.scale_y(125)
+        x_start = self.scaler.scale_x(287)
+        y_start = self.scaler.scale_y(170)
+        spacing_x = self.scaler.scale_x(93)
+        spacing_y = self.scaler.scale_y(140)
         for i, plant in enumerate(self.plants_list):
             if i >= cols * rows:
                 break
@@ -96,6 +100,40 @@ class Almanac:
             self.close_button_img,
             self.close_button_hover_img,
             self.on_close_plants
+        )
+
+        # Zombies section buttons
+        self.zombie_buttons = []
+        cols = 8
+        rows = 7
+        button_width = self.scaler.scale_x(90)
+        button_height = self.scaler.scale_y(125)
+        x_start = self.scaler.scale_x(287)
+        y_start = self.scaler.scale_y(170)
+        spacing_x = self.scaler.scale_x(93)
+        spacing_y = self.scaler.scale_y(140)
+        for i, zombie in enumerate(self.zombies_list):
+            if i >= cols * rows:
+                break
+            row = i // cols
+            col = i % cols
+            x = x_start + col * spacing_x
+            y = y_start + row * spacing_y
+            button = SimplePygameButton(
+                (x, y),
+                (button_width, button_height),
+                [],
+                lambda z=zombie: self.select_zombie(z),
+                (150, 150, 200)
+            )
+            self.zombie_buttons.append(button)
+        # Close button for zombies
+        self.zombies_close_button = SimpleImageButton(
+            (self.game.width - self.scaler.scale_x(178) - self.scaler.scale_x(20), self.scaler.scale_y(20)),
+            self.scaler.scale(178, 52),
+            self.close_button_img,
+            self.close_button_hover_img,
+            self.on_close_zombies
         )
         # Load plants section images
         self.plants_ground = pygame.image.load('images/Almanac_GroundDay.jpg')
@@ -129,6 +167,32 @@ class Almanac:
         self.animation_timer = 0.0
         self.frame_duration = 0.1
 
+        # Zombie animations
+        self.zombie_animations = {}
+        self.zombie_idle_frames = {}
+        for zombie in self.zombies_list:
+            frames = []
+            i = 1
+            while True:
+                try:
+                    frame = pygame.image.load(f'animations/Zombies/{zombie.lower().replace(" ", "_")}/{zombie.replace(" ", "")}{i:04d}.png')
+                    frames.append(frame)
+                    i += 1
+                except:
+                    break
+            if frames:
+                self.zombie_animations[zombie] = frames
+                zombie_type = zombie.lower().replace(' ', '_').replace('_health', '')
+                idle_frames = get_animation_frames('idle', zombie_type)
+                if not idle_frames:
+                    idle_frames = get_animation_frames('walk', zombie_type)
+                if not idle_frames:
+                    idle_frames = list(range(1, len(frames) + 1))
+                self.zombie_idle_frames[zombie] = idle_frames
+            else:
+                self.zombie_animations[zombie] = None
+                self.zombie_idle_frames[zombie] = []
+
         # Colors for description tags
         self.keyword_color = "#0C24F8"
         self.stat_color = "#F80C0C"
@@ -151,7 +215,13 @@ class Almanac:
     def select_plant(self, plant):
         self.selected_plant = plant
 
+    def select_zombie(self, zombie):
+        self.selected_zombie = zombie
+
     def on_close_plants(self):
+        self.current_section = 'index'
+
+    def on_close_zombies(self):
         self.current_section = 'index'
 
     def update_animation(self, dt):
@@ -161,6 +231,12 @@ class Almanac:
                 self.animation_timer -= self.frame_duration
                 if self.idle_frames.get(self.selected_plant) and self.idle_frames[self.selected_plant]:
                     self.current_frame = (self.current_frame + 1) % len(self.idle_frames[self.selected_plant])
+        elif self.current_section == 'zombies':
+            self.animation_timer += dt
+            if self.animation_timer >= self.frame_duration:
+                self.animation_timer -= self.frame_duration
+                if self.zombie_idle_frames.get(self.selected_zombie) and self.zombie_idle_frames[self.selected_zombie]:
+                    self.current_frame = (self.current_frame + 1) % len(self.zombie_idle_frames[self.selected_zombie])
 
     def parse_description_line(self, line):
         if line.strip() == "{SHORTLINE}":
@@ -227,6 +303,10 @@ class Almanac:
             for button in self.plant_buttons:
                 button.update(event)
             self.plants_close_button.update(event)
+        elif self.current_section == 'zombies':
+            for button in self.zombie_buttons:
+                button.update(event)
+            self.zombies_close_button.update(event)
 
     def draw(self):
         # Draw background
@@ -271,7 +351,11 @@ class Almanac:
             ground_y = self.scaler.scale_y(150)
             self.screen.blit(self.plants_ground, (ground_x, ground_y))
             if self.plant_animations[self.selected_plant]:
-                frame = self.plant_animations[self.selected_plant][self.current_frame]
+                if self.idle_frames[self.selected_plant]:
+                    frame_index = self.idle_frames[self.selected_plant][self.current_frame] - 1
+                    frame = self.plant_animations[self.selected_plant][frame_index]
+                else:
+                    frame = self.plant_animations[self.selected_plant][self.current_frame]
                 scaled_frame = pygame.transform.scale(frame, (self.scaler.scale_x(150), self.scaler.scale_y(150)))
                 self.screen.blit(scaled_frame, (ground_x + self.scaler.scale_x(50), ground_y + self.scaler.scale_y(50)))
             # Plant card
@@ -316,3 +400,37 @@ class Almanac:
             self.plants_close_button.draw(self.screen)
         elif self.current_section == 'zombies':
             self.screen.blit(self.zombie_bg_img, (0,0))
+            # Draw grid
+            for i, button in enumerate(self.zombie_buttons):
+                zombie = self.zombies_list[i]
+                scaled_seed = pygame.transform.scale(self.game.seed_image, button.size)
+                self.screen.blit(scaled_seed, button.position)
+                # Placeholder for zombie icon, assuming no icons yet
+                if zombie == self.selected_zombie:
+                    pygame.draw.rect(self.screen, (255,255,255), pygame.Rect(button.position, button.size), 3)
+            # Draw zombie display
+            ground_x = self.scaler.scale_x(1350)
+            ground_y = self.scaler.scale_y(150)
+            self.screen.blit(self.plants_ground, (ground_x, ground_y))  # Reuse ground image
+            if self.zombie_animations[self.selected_zombie]:
+                if self.zombie_idle_frames[self.selected_zombie]:
+                    frame_index = self.zombie_idle_frames[self.selected_zombie][self.current_frame] - 1
+                    frame = self.zombie_animations[self.selected_zombie][frame_index]
+                else:
+                    frame = self.zombie_animations[self.selected_zombie][self.current_frame]
+                scaled_frame = pygame.transform.scale(frame, (self.scaler.scale_x(150), self.scaler.scale_y(150)))
+                self.screen.blit(scaled_frame, (ground_x + self.scaler.scale_x(50), ground_y + self.scaler.scale_y(50)))
+            # Zombie card
+            card_x = self.scaler.scale_x(1200)
+            card_y = self.scaler.scale_y(100)
+            self.screen.blit(self.plant_card_bg, (card_x, card_y))  # Reuse plant card bg
+            # Name
+            name = self.selected_zombie.replace(' Health', '').replace('_', ' ')
+            name_text = self.game.font.render(name, True, "#AD8B2C")
+            self.screen.blit(name_text, (card_x + self.scaler.scale_x(196), card_y + self.scaler.scale_y(400)))
+            # Health
+            health = ZOMBIE_HEALTH[self.selected_zombie]
+            health_text = self.game.small_font.render(f"Health: {health}", True, (25,25,200))
+            self.screen.blit(health_text, (card_x + self.scaler.scale_x(48), card_y + self.scaler.scale_y(500)))
+            # Close button
+            self.zombies_close_button.draw(self.screen)
