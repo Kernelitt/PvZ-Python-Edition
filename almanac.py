@@ -62,7 +62,13 @@ class Almanac:
         # Current section: 'index', 'plants', or 'zombies'
         self.current_section = 'index'
 
+
+
+
+
+
         # Plants section
+
         self.plants_list = list(PLANT_SUN_COST.keys())
         self.selected_plant = 'Peashooter'
 

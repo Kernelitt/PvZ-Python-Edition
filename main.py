@@ -384,6 +384,26 @@ class MainMenu:
         )
         self.image_buttons.append(quit_button)
 
+        # Text buttons for progress management
+        self.text_buttons = []
+        complete_button = SimplePygameButton(
+            (game.scaler.scale_x(100), game.scaler.scale_y(700)),
+            (game.scaler.scale_x(200), game.scaler.scale_y(50)),
+            [("Complete All", (50, 15))],
+            self.complete_all,
+            (0, 128, 0)
+        )
+        self.text_buttons.append(complete_button)
+
+        reset_button = SimplePygameButton(
+            (game.scaler.scale_x(100), game.scaler.scale_y(760)),
+            (game.scaler.scale_x(200), game.scaler.scale_y(50)),
+            [("Reset Progress", (40, 15))],
+            self.reset_progress,
+            (128, 0, 0)
+        )
+        self.text_buttons.append(reset_button)
+
     def start_game(self):
         self.game.menu = Menu(game=self.game)
         self.game.state = 'level_menu'
@@ -418,6 +438,20 @@ class MainMenu:
         pygame.quit()
         exit()
 
+    def complete_all(self):
+        self.game.user['completed_levels'] = set(self.game.levels.keys())
+        self.game.user['unlocked_plants'] = list(PLANT_SUN_COST.keys())
+        with open('user.json', 'w') as f:
+            json.dump({'completed_levels': list(self.game.user['completed_levels']), 'unlocked_plants': self.game.user['unlocked_plants']}, f)
+        print("All levels completed and all plants unlocked.")
+
+    def reset_progress(self):
+        self.game.user['completed_levels'] = set()
+        self.game.user['unlocked_plants'] = ['Peashooter']
+        with open('user.json', 'w') as f:
+            json.dump({'completed_levels': list(self.game.user['completed_levels']), 'unlocked_plants': self.game.user['unlocked_plants']}, f)
+        print("Progress reset.")
+
     def update_animation(self, dt):
         if self.playing_animation:
             self.animation_timer += dt
@@ -431,6 +465,8 @@ class MainMenu:
     def update(self, event):
         for button in self.image_buttons:
             button.update(event)
+        for button in self.text_buttons:
+            button.update(event)
 
     def draw(self, screen):
         # Draw the current animation frame
@@ -440,6 +476,8 @@ class MainMenu:
         # Draw image buttons on top
         for button in self.image_buttons:
             button.draw(screen)
+        for button in self.text_buttons:
+            button.draw(screen,self.game.font)
 
 class SeedSelect:
     def __init__(self, game, background, banned_plants):
@@ -921,7 +959,7 @@ class MainGame:
             for col in range(self.game_field.cols):
                 plant = self.game_field.grid[row][col]
                 if plant and hasattr(plant, 'update'):
-                    if isinstance(plant, (Peashooter, SnowPea, Repeater,PuffShroom)):
+                    if isinstance(plant, (Peashooter, SnowPea, Repeater,PuffShroom,Chomper)):
                         plant.update(dt, self.zombies)
                     else:
                         plant.update(dt)

@@ -348,8 +348,34 @@ class PoleVaulterZombie(Zombie):
 
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
-        self.cone_rect.x = int(self.x)
-        self.cone_rect.y = int(self.y)
-        self.bucket_rect.x = int(self.x)
-        self.bucket_rect.y = int(self.y)
 
+    def draw(self, screen):
+        # Always draw the basic zombie
+        frame = self.animation_frames[self.current_action][self.frame_index]
+        scaled_frame = pygame.transform.scale(frame, (681 // 1.2, 480 // 1.2))
+        combined_surface = pygame.Surface((681 // 1.2, 480 // 1.2), pygame.SRCALPHA)
+        combined_surface.blit(scaled_frame, (0, 30))
+
+        # Visual effects
+        if self.damage_flash_timer > 0:
+            combined_surface = combined_surface.copy()
+            tint = pygame.Surface(combined_surface.get_size(), pygame.SRCALPHA)
+            tint.fill((128, 0, 0, 0))
+            tint_alpha = surfarray.pixels_alpha(tint)
+            frame_alpha = surfarray.pixels_alpha(combined_surface)
+            tint_alpha[:] = frame_alpha
+            del tint_alpha
+            del frame_alpha
+            combined_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+        if self.frozen_effect:
+            combined_surface = combined_surface.copy()
+            tint = pygame.Surface(combined_surface.get_size(), pygame.SRCALPHA)
+            tint.fill((0, 0, 128, 0))
+            tint_alpha = surfarray.pixels_alpha(tint)
+            frame_alpha = surfarray.pixels_alpha(combined_surface)
+            tint_alpha[:] = frame_alpha
+            del tint_alpha
+            del frame_alpha
+            combined_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+        screen.blit(combined_surface, (self.x-160, self.y-130))

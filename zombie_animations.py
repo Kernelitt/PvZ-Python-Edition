@@ -130,12 +130,36 @@ WALLNUT_ANIMATIONS = {
 }
 
 POTATO_MINE_ANIMATIONS = {
+    'not_armed': {
+        'start_frame': 1,
+        'end_frame': 8,
+        'loop': True,
+        'fps': 6
+    },
+    'arming': {
+        'start_frame': 9,
+        'end_frame': 20,
+        'loop': True,
+        'fps': 12
+    },
     'idle': {
         'start_frame': 21,
         'end_frame': 32,
         'loop': True,
         'fps': 12
-    }
+    },
+    'explode': {
+        'start_frame': 36,
+        'end_frame': 36,
+        'loop': True,
+        'fps': 1
+    },
+    'blink': { # when idle
+        'start_frame': 33,
+        'end_frame': 35,
+        'loop': True,
+        'fps': 12
+    },
 }
 
 SNOW_PEA_ANIMATIONS = {
@@ -174,8 +198,26 @@ SNOW_PEA_ANIMATIONS = {
 CHOMPER_ANIMATIONS = {
     'idle': {
         'start_frame': 1,
-        'end_frame': 24,
+        'end_frame': 26,
         'loop': True,
+        'fps': 12
+    },
+        'attack': {
+        'start_frame': 27,
+        'end_frame': 50,
+        'loop': False,
+        'fps': 12
+    },
+        'chewing': {
+        'start_frame': 51,
+        'end_frame': 68,
+        'loop': True,
+        'fps': 12
+    },
+        'chewing_to_idle': {
+        'start_frame': 69,
+        'end_frame': 94,
+        'loop': False,
         'fps': 12
     }
 }

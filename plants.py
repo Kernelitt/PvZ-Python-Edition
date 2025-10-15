@@ -278,7 +278,7 @@ class CherryBomb(Plant):
             return
         # Update idle animation
         self.idle_timer += dt
-        idle_fps = CHERRYBOMB_ANIMATIONS['idle']['fps']
+        idle_fps = CHERRYBOMB_ANIMATIONS['active']['fps']
         if self.idle_timer >= 1.0 / idle_fps:
             self.idle_timer -= 1.0 / idle_fps
             self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
@@ -363,37 +363,97 @@ class PotatoMine(Plant):
         self.exploded = False
         self.rect = pygame.Rect(self.x, self.y, 80, 80)
 
+        # Animation state
+        self.current_action = 'not_armed'
+        self.not_armed_frame_index = 0
+        self.not_armed_timer = 0.0
+        self.arming_frame_index = 0
+        self.arming_timer = 0.0
+        self.idle_frame_index = 0
+        self.idle_timer = 0.0
+        self.blink_frame_index = 0
+        self.blink_timer = 0.0
+        self.explode_frame_index = 0
+        self.explode_timer = 0.0
+        self.blink_chance = 0.1  # Chance to blink per frame
+
         # Use preloaded animation frames
         self.animation_frames = {}
         for action in POTATO_MINE_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'potato_mine_{action}']
-        self.current_action = 'idle'
-        self.idle_frame_index = 0
-        self.idle_timer = 0.0
 
     def update(self, dt):
         if self.exploded:
             return
         if self.health <= 0 and self.armed:
+            self.current_action = 'explode'
+            self.explode_frame_index = 0
+            self.explode_timer = 0.0
             self.explode()
             return
-        if not self.armed:
+
+        # State transitions
+        if self.current_action == 'not_armed':
+            # Update not_armed animation
+            self.not_armed_timer += dt
+            not_armed_fps = POTATO_MINE_ANIMATIONS['not_armed']['fps']
+            if self.not_armed_timer >= 1.0 / not_armed_fps:
+                self.not_armed_timer -= 1.0 / not_armed_fps
+                self.not_armed_frame_index = (self.not_armed_frame_index + 1) % len(self.animation_frames['not_armed'])
+            # Check if arming should start
             self.timer -= dt
             if self.timer <= 0:
-                self.armed = True
-                # Change to armed animation if available, else stay idle
-        else:
+                self.current_action = 'arming'
+                self.arming_frame_index = 0
+                self.arming_timer = 0.0
+
+        elif self.current_action == 'arming':
+            # Update arming animation
+            self.arming_timer += dt
+            arming_fps = POTATO_MINE_ANIMATIONS['arming']['fps']
+            if self.arming_timer >= 1.0 / arming_fps:
+                self.arming_timer -= 1.0 / arming_fps
+                self.arming_frame_index += 1
+                if self.arming_frame_index >= len(self.animation_frames['arming']):
+                    self.armed = True
+                    self.current_action = 'idle'
+                    self.idle_frame_index = 0
+                    self.idle_timer = 0.0
+
+        elif self.current_action in ['idle', 'blink']:
             # Check if zombie is stepping on it
             for zombie in self.game.main_game.zombies:
                 if zombie.lane == self.row and self.rect.colliderect(zombie.rect):
+                    self.current_action = 'explode'
+                    self.explode_frame_index = 0
+                    self.explode_timer = 0.0
                     self.explode()
                     return
-        # Update idle animation
-        self.idle_timer += dt
-        idle_fps = POTATO_MINE_ANIMATIONS['idle']['fps']
-        if self.idle_timer >= 1.0 / idle_fps:
-            self.idle_timer -= 1.0 / idle_fps
-            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+            # Update idle animation
+            if self.current_action == 'idle':
+                self.idle_timer += dt
+                idle_fps = POTATO_MINE_ANIMATIONS['idle']['fps']
+                if self.idle_timer >= 1.0 / idle_fps:
+                    self.idle_timer -= 1.0 / idle_fps
+                    self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+                # Random blink
+                if random.random() < self.blink_chance:
+                    self.current_action = 'blink'
+                    self.blink_frame_index = 0
+                    self.blink_timer = 0.0
+
+            # Update blink animation
+            elif self.current_action == 'blink':
+                self.blink_timer += dt
+                blink_fps = POTATO_MINE_ANIMATIONS['blink']['fps']
+                if self.blink_timer >= 1.0 / blink_fps:
+                    self.blink_timer -= 1.0 / blink_fps
+                    self.blink_frame_index += 1
+                    if self.blink_frame_index >= len(self.animation_frames['blink']):
+                        self.current_action = 'idle'
+                        self.blink_frame_index = 0
 
         super().update(dt)
 
@@ -416,7 +476,18 @@ class PotatoMine(Plant):
     def draw(self, screen):
         if self.exploded:
             return
-        frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.current_action == 'not_armed':
+            frame = self.animation_frames['not_armed'][self.not_armed_frame_index]
+        elif self.current_action == 'arming':
+            frame = self.animation_frames['arming'][self.arming_frame_index]
+        elif self.current_action == 'idle':
+            frame = self.animation_frames['idle'][self.idle_frame_index]
+        elif self.current_action == 'blink':
+            frame = self.animation_frames['idle'][self.idle_frame_index].copy()
+            blink_frame = self.animation_frames['blink'][self.blink_frame_index]
+            frame.blit(blink_frame, (0,0))
+        else:
+            frame = self.animation_frames['idle'][self.idle_frame_index]  # fallback
         if self.damage_flash_timer > 0:
             frame = frame.copy()
             tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
@@ -551,6 +622,10 @@ class SnowPea(Plant):
 class Chomper(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x, y, "Chomper", game, row)
+        self.eating_cooldown = PLANT_TIMERS.get("Chomper Cooldown", 40000) / 1000.0  # 10 seconds
+        self.chewing_duration = PLANT_TIMERS.get("Chomper Chewing Duration", 900) / 1000.0  # 2 seconds
+        self.last_eat_time = 0.0
+        self.chewing_timer = 0.0
 
         # Use preloaded animation frames
         self.animation_frames = {}
@@ -559,19 +634,83 @@ class Chomper(Plant):
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
+        self.attack_frame_index = 0
+        self.attack_timer = 0.0
+        self.chewing_frame_index = 0
+        self.chewing_to_idle_frame_index = 0
+        self.chewing_to_idle_timer = 0.0
 
-    def update(self, dt):
-        # Update idle animation
-        self.idle_timer += dt
-        idle_fps = CHOMPER_ANIMATIONS['idle']['fps']
-        if self.idle_timer >= 1.0 / idle_fps:
-            self.idle_timer -= 1.0 / idle_fps
-            self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+    def update(self, dt, zombies):
+        current_time = time.time()
+
+        # Check for zombies in range if idle and cooldown passed
+        if self.current_action == 'idle' and current_time - self.last_eat_time >= self.eating_cooldown:
+            cell_width = self.game.main_game.game_field.cell_width
+            for zombie in zombies:
+                if zombie.lane == self.row and self.x <= zombie.x <= self.x + cell_width * 2:
+                    # Eat the zombie
+                    zombie.take_damage(9000)  # Instant kill
+                    self.current_action = 'attack'
+                    self.attack_frame_index = 0
+                    self.attack_timer = 0.0
+                    self.last_eat_time = current_time
+                    self.game.sound_manager.play_sound('chomp')
+                    break
+
+        # Update animations based on state
+        if self.current_action == 'idle':
+            self.idle_timer += dt
+            idle_fps = CHOMPER_ANIMATIONS['idle']['fps']
+            if self.idle_timer >= 1.0 / idle_fps:
+                self.idle_timer -= 1.0 / idle_fps
+                self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
+
+        elif self.current_action == 'attack':
+            self.attack_timer += dt
+            attack_fps = CHOMPER_ANIMATIONS['attack']['fps']
+            if self.attack_timer >= 1.0 / attack_fps:
+                self.attack_timer -= 1.0 / attack_fps
+                self.attack_frame_index += 1
+                if self.attack_frame_index >= len(self.animation_frames['attack']):
+                    self.current_action = 'chewing'
+                    self.chewing_frame_index = 0
+                    self.chewing_timer = 0.0
+
+        elif self.current_action == 'chewing':
+            self.chewing_timer += dt
+            chewing_fps = CHOMPER_ANIMATIONS['chewing']['fps']
+            if self.chewing_timer >= 1.0 / chewing_fps:
+                self.chewing_timer -= 1.0 / chewing_fps
+                self.chewing_frame_index = (self.chewing_frame_index + 1) % len(self.animation_frames['chewing'])
+            if self.chewing_timer >= self.chewing_duration:
+                self.current_action = 'chewing_to_idle'
+                self.chewing_to_idle_frame_index = 0
+                self.chewing_to_idle_timer = 0.0
+
+        elif self.current_action == 'chewing_to_idle':
+            self.chewing_to_idle_timer += dt
+            chewing_to_idle_fps = CHOMPER_ANIMATIONS['chewing_to_idle']['fps']
+            if self.chewing_to_idle_timer >= 1.0 / chewing_to_idle_fps:
+                self.chewing_to_idle_timer -= 1.0 / chewing_to_idle_fps
+                self.chewing_to_idle_frame_index += 1
+                if self.chewing_to_idle_frame_index >= len(self.animation_frames['chewing_to_idle']):
+                    self.current_action = 'idle'
+                    self.idle_frame_index = 0
+                    self.idle_timer = 0.0
 
         super().update(dt)
 
     def draw(self, screen):
-        frame = self.animation_frames['idle'][self.idle_frame_index]
+        if self.current_action == 'idle':
+            frame = self.animation_frames['idle'][self.idle_frame_index]
+        elif self.current_action == 'attack':
+            frame = self.animation_frames['attack'][self.attack_frame_index]
+        elif self.current_action == 'chewing':
+            frame = self.animation_frames['chewing'][self.chewing_frame_index]
+        elif self.current_action == 'chewing_to_idle':
+            frame = self.animation_frames['chewing_to_idle'][self.chewing_to_idle_frame_index]
+        else:
+            frame = self.animation_frames['idle'][0]  # fallback
         if self.damage_flash_timer > 0:
             frame = frame.copy()
             tint = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
@@ -581,7 +720,7 @@ class Chomper(Plant):
             tint_alpha[:] = frame_alpha
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (200, 200))
-        screen.blit(scaled_frame, (self.x, self.y))
+        screen.blit(scaled_frame, (self.x, self.y-40))
 
 class Repeater(Plant):
     def __init__(self, x, y, game, row):
