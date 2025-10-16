@@ -205,7 +205,7 @@ PROJECTILE_TEXTURES_PATH = {
 
 WAVE_OPTIONS = {
     "Every": 2,
-    "Points":1
+    "Points":32
 }
 
 # Nocturnal plants that sleep during the day

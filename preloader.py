@@ -43,10 +43,10 @@ def preload_plant_animations():
     preloaded_images['sun_idle'] = [pygame.image.load(f'animations/sun/Sun{f:04d}.png').convert_alpha() for f in frames]
     print("Plant animations preloaded.")
 
-def preload_sun_animations():
+def preload_coin_animations():
     print("Preloading sun animations...")
-    frames = get_animation_frames('idle', 'sun')
-    preloaded_images['sun_idle'] = [pygame.image.load(f'animations/sun/Sun{f:04d}.png').convert_alpha() for f in frames]
+    frames = get_animation_frames('idle', 'coin_silver')
+    preloaded_images['coin_silver'] = [pygame.image.load(f'animations/collectable/Coin_silver/Coin_silver{f:04d}.png').convert_alpha() for f in frames]
     print("Sun animations preloaded.")
 
 def preload_ui():
@@ -62,5 +62,5 @@ def preload_ui():
 def preload_all():
     preload_zombie_animations()
     preload_plant_animations()
-    preload_sun_animations()
+    preload_coin_animations()
     preload_ui()

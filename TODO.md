@@ -1,15 +1,19 @@
-# TODO: Implement Chomper Mechanics and Animations
+# TODO: Integrate Coin System into PvZ Python Edition
 
-## Tasks
-- [x] Add state management variables in Chomper.__init__ (current_action, timers, cooldown)
-- [x] Implement zombie detection and eating logic in Chomper.update()
-- [x] Add animation handling for 'attack', 'chewing', 'chewing_to_idle' in Chomper.update()
-- [x] Update Chomper.draw() to handle all animation states
-- [x] Test the implementation (run the game and place Chomper)
+## Completed Tasks
+- [x] Added Coin class in plants.py with update, draw, collect methods.
 
-## Notes
-- Eating range: 1 cell ahead in the same row
-- Instantly kill zombie on eat
-- Chewing duration: ~2 seconds (adjust based on animation length)
-- Cooldown after eating: 10 seconds
-- Animations: 'idle', 'attack', 'chewing', 'chewing_to_idle'
+## Pending Tasks
+- [ ] Load coin_count from user.json in Game.__init__.
+- [ ] Add coins list and coin_count to MainGame.__init__.
+- [ ] Spawn Coin on zombie death in MainGame.update_wave.
+- [ ] Update coins in MainGame.update_wave.
+- [ ] Handle coin collection on click in MainGame.update.
+- [ ] Draw coins in MainGame.draw.
+- [ ] Display coin_count in слева-снизу.
+- [ ] Save coin_count to user.json on collection.
+- [ ] Test coin spawning on zombie death.
+- [ ] Test coin falling animation and ground collision.
+- [ ] Test coin rendering.
+- [ ] Test coin collection increments count, plays sound, saves.
+- [ ] Run game to ensure no errors and full functionality.

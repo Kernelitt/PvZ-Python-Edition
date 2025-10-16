@@ -277,12 +277,24 @@ class PoleVaulterZombie(Zombie):
                     target_col = col
                     break
 
-        if target_col is not None and not self.jumped:
+        if target_col != None and not self.jumped:
             # Target the plant
-            plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
-            if self.x > plant_x + self.game_field.cell_width / 2:
-                # Start jump animation if close enough
-                if self.x - plant_x < 200 and self.current_action != 'jump':
+            plant_x = self.game_field.field_x + target_col * self.game_field.cell_width + self.game_field.cell_width
+            if self.x > plant_x:
+                # Run towards plant
+                if self.current_action != 'run':
+                    self.current_action = 'run'
+                    self.frame_index = 0
+                    self.animation_timer = 0.0
+                    self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                self.animation_timer += dt_effective
+                if self.animation_timer >= self.frame_duration:
+                    self.animation_timer -= self.frame_duration
+                    self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
+                self.x -= self.speed * dt_effective
+            else:
+                # At plant, jump over it
+                if self.current_action != 'jump':
                     self.current_action = 'jump'
                     self.frame_index = 0
                     self.animation_timer = 0.0
@@ -295,56 +307,64 @@ class PoleVaulterZombie(Zombie):
                         self.frame_index += 1
                         if self.frame_index >= len(self.animation_frames[self.current_action]):
                             # Jump completed, teleport to next cell
-                            self.x = plant_x + self.game_field.cell_width
+                            self.x = plant_x - self.game_field.cell_width * 2
                             self.jumped = True
                             self.current_action = 'walk'
                             self.frame_index = 0
                             self.animation_timer = 0.0
                             self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
-                else:
-                    # Run towards plant
-                    if self.current_action != 'run':
-                        self.current_action = 'run'
-                        self.frame_index = 0
-                        self.animation_timer = 0.0
-                        self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
-                    self.animation_timer += dt_effective
-                    if self.animation_timer >= self.frame_duration:
-                        self.animation_timer -= self.frame_duration
-                        self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
-                    self.x -= self.speed * dt_effective
-            else:
-                # At plant, damage it
-                if self.current_action != 'attack':
-                    self.current_action = 'attack'
+        else:
+            if not self.jumped:
+                # No plant, run normally
+                if self.current_action != 'run':
+                    self.current_action = 'run'
                     self.frame_index = 0
                     self.animation_timer = 0.0
                     self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
-                self.last_sound_time += dt_effective
-                self.damage_timer += dt_effective
-                if self.last_sound_time > 0.75:
-                    self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
-                    self.last_sound_time = 0.0
-                if self.damage_timer > 0.013:
-                    plant = self.game_field.grid[self.lane][target_col]
-                    if hasattr(plant, 'health'):
-                        plant.health -= 1
-                        if plant.health <= 0:
-                            self.game_field.grid[self.lane][target_col] = None
-                            self.game_field.game.sound_manager.play_sound('plant_break')
-                    self.damage_timer = 0.0
-        else:
-            # No plant or already jumped, walk normally
-            if self.current_action != 'walk':
-                self.current_action = 'walk'
-                self.frame_index = 0
-                self.animation_timer = 0.0
-                self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
-            self.animation_timer += dt_effective
-            if self.animation_timer >= self.frame_duration:
-                self.animation_timer -= self.frame_duration
-                self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
-            self.x -= self.speed * dt_effective
+                self.animation_timer += dt_effective
+                if self.animation_timer >= self.frame_duration:
+                    self.animation_timer -= self.frame_duration
+                    self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
+                self.x -= self.speed * dt_effective
+            else:
+                # Behave like basic zombie: attack plants or walk
+                if target_col is not None:
+                    # Target the plant
+                    plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
+                    if self.x > plant_x + self.game_field.cell_width / 2:
+                        self.x -= self.speed * dt_effective
+                        if self.current_action != 'walk':
+                            self.current_action = 'walk'
+                            self.frame_index = 0
+                            self.animation_timer = 0.0
+                            self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                    else:
+                        # At plant, damage it
+                        if self.current_action != 'attack':
+                            self.current_action = 'attack'
+                            self.frame_index = 0
+                            self.animation_timer = 0.0
+                            self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                        self.last_sound_time += dt_effective
+                        self.damage_timer += dt_effective
+                        if self.last_sound_time > 0.75:
+                            self.game_field.game.sound_manager.play_sound(f'zombie_attack{self.attack_sound_index + 1}')
+                            self.last_sound_time = 0.0
+                        if self.damage_timer > 0.013:
+                            plant = self.game_field.grid[self.lane][target_col]
+                            if hasattr(plant, 'health'):
+                                plant.health -= 1
+                                if plant.health <= 0:
+                                    self.game_field.grid[self.lane][target_col] = None
+                                    self.game_field.game.sound_manager.play_sound('plant_break')
+                            self.damage_timer = 0.0
+                else:
+                    self.x -= self.speed * dt_effective
+                    if self.current_action != 'walk':
+                        self.current_action = 'walk'
+                        self.frame_index = 0
+                        self.animation_timer = 0.0
+                        self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
 
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
@@ -378,4 +398,4 @@ class PoleVaulterZombie(Zombie):
             del frame_alpha
             combined_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-        screen.blit(combined_surface, (self.x-160, self.y-130))
+        screen.blit(combined_surface, (self.x - 283, self.y-290))

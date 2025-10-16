@@ -35,13 +35,13 @@ POLE_VAULTER_ZOMBIE_ANIMATIONS = {
         'start_frame': 13,
         'end_frame': 50,
         'loop': True,
-        'fps': 12  # frames per second for this animation
+        'fps': 24  # frames per second for this animation
     },
     'walk': {
         'start_frame': 94,
         'end_frame': 138,
         'loop': True,
-        'fps': 12  # frames per second for this animation
+        'fps': 24  # frames per second for this animation
     },
     'jump': {
         'start_frame': 51,
@@ -266,7 +266,7 @@ PUFF_SHROOM_ANIMATIONS = {
         'start_frame': 5,
         'end_frame': 21,
         'loop': True,
-        'fps': 24
+        'fps': 12
     },
     'shoot': {
         'start_frame': 22,
@@ -278,7 +278,7 @@ PUFF_SHROOM_ANIMATIONS = {
         'start_frame': 35,
         'end_frame': 51,
         'loop': True,
-        'fps': 24
+        'fps': 12
     },
 }
 
@@ -293,7 +293,7 @@ SUN_SHROOM_ANIMATIONS = {
         'start_frame': 5,
         'end_frame': 17,
         'loop': True,
-        'fps': 24
+        'fps': 12
     },
     'idle_big': {
         'start_frame': 5,
@@ -326,13 +326,13 @@ FUME_SHROOM_ANIMATIONS = {
         'start_frame': 5,
         'end_frame': 21,
         'loop': True,
-        'fps': 24
+        'fps': 12
     },
     'sleep': {
         'start_frame': 51,
         'end_frame': 68,
         'loop': True,
-        'fps': 24
+        'fps': 12
     }
 }
 
@@ -432,6 +432,15 @@ SUN_ANIMATIONS = {
     }
 }
 
+COIN_SILVER_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 21,
+        'loop': True,
+        'fps': 24
+    }
+}
+
 MAIN_MENU = {
     'awake':{
         'start_frame': 1,
@@ -473,6 +482,8 @@ def get_animation_frames(action, anim_type='zombie'):
         anim = LILYPAD_ANIMATIONS[action]
     elif anim_type == 'sun' and action in SUN_ANIMATIONS:
         anim = SUN_ANIMATIONS[action]
+    elif anim_type == 'coin_silver' and action in COIN_SILVER_ANIMATIONS:
+        anim = COIN_SILVER_ANIMATIONS[action]
     elif anim_type == 'main_menu' and action in MAIN_MENU:
         anim = MAIN_MENU[action]
     elif anim_type == 'pole_vaulter_zombie' and action in POLE_VAULTER_ZOMBIE_ANIMATIONS:

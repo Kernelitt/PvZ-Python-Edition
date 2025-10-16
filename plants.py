@@ -622,8 +622,8 @@ class SnowPea(Plant):
 class Chomper(Plant):
     def __init__(self, x, y, game, row):
         super().__init__(x, y, "Chomper", game, row)
-        self.eating_cooldown = PLANT_TIMERS.get("Chomper Cooldown", 40000) / 1000.0  # 10 seconds
-        self.chewing_duration = PLANT_TIMERS.get("Chomper Chewing Duration", 900) / 1000.0  # 2 seconds
+        self.eating_cooldown = PLANT_TIMERS.get("Chomper Cooldown", 40000) / 1000.0  
+        self.chewing_duration = PLANT_TIMERS.get("Chomper Chewing Duration", 900) / 1000.0  
         self.last_eat_time = 0.0
         self.chewing_timer = 0.0
 
@@ -1233,4 +1233,48 @@ class Sun:
     def collect(self):
         self.collected = True
         self.game.main_game.sun_count += self.value
+        self.game.sound_manager.play_sound('points')
+
+class Coin:
+    def __init__(self, x, y, game):
+        self.x = x
+        self.y = y
+        self.game = game
+        self.value = 10
+        self.collected = False
+        self.animation_frames = preloaded_images['sun_idle']  # Reuse sun animation for now
+        self.current_frame = 0
+        self.frame_timer = 0.0
+        self.frame_duration = 1.0 / SUN_ANIMATIONS['idle']['fps']
+        self.rect = self.animation_frames[0].get_rect(center=(self.x, self.y))
+        # Fall straight down
+        self.speed_x = 0
+        self.speed_y = 50  # downward
+        self.gravity = 0  # no gravity, constant fall
+
+    def update(self, dt):
+        if self.collected:
+            return
+        # Animate coin
+        self.frame_timer += dt
+        if self.frame_timer >= self.frame_duration:
+            self.frame_timer -= self.frame_duration
+            self.current_frame = (self.current_frame + 1) % len(self.animation_frames)
+        # Move coin
+        self.y += self.speed_y * dt
+        if self.y > self.game.height - 100:
+            self.y = self.game.height - 100
+            self.speed_y = 0
+        self.rect.center = (int(self.x), int(self.y))
+
+    def draw(self, screen):
+        if self.collected:
+            return
+        frame = self.animation_frames[self.current_frame]
+        scaled_frame = pygame.transform.scale(frame, (80, 80))  # Smaller than sun
+        screen.blit(scaled_frame, (self.rect.x, self.rect.y))
+
+    def collect(self):
+        self.collected = True
+        self.game.main_game.coin_count += self.value
         self.game.sound_manager.play_sound('points')

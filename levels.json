@@ -40,7 +40,7 @@
     "background": "background1.png",
     "waves": 20,
     "start_sun": 50,
-    "zombies": ["BasicZombie","PoleVaulterZombie"],
+    "zombies": ["PoleVaulterZombie"],
     "banned_plants": [],
     "unlocked_plants": ["Snow Pea"]
   },

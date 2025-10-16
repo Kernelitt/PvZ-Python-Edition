@@ -772,6 +772,8 @@ class MainGame:
 
         self.game_field = GameField(game.scaler, game.width, game.height, game)
         self.sun_count = self.level_data['start_sun']
+        self.coin_count = self.game.user['coins']
+        self.coins = []
         self.selected_seed = None
         self.hotbar_height = game.scaler.scale_y(100 * 2)
         self.wave_number = 1
@@ -1007,6 +1009,12 @@ class MainGame:
             self.game.state = 'lose'
             self.game.sound_manager.play_music('lose')
             return
+
+        # Spawn coins on zombie death
+        for zombie in self.zombies:
+            if zombie.health <= 0 and getattr(zombie, 'to_remove', False):
+                coin = Coin(zombie.x, zombie.y, self.game)
+                self.coins.append(coin)
 
         # Remove zombies that are off screen or dead
         self.zombies = [z for z in self.zombies if z.x > -50 and (z.health > 0 or not getattr(z, 'to_remove', False))]
@@ -1372,8 +1380,10 @@ class Game:
             with open('user.json', 'r') as f:
                 self.user = json.load(f)
                 self.user['completed_levels'] = set(self.user['completed_levels'])
+                if 'coins' not in self.user:
+                    self.user['coins'] = 0
         except FileNotFoundError:
-            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter']}
+            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter'], 'coins': 0}
 
         # Load images
         self.seedbank_image = pygame.image.load('images/seedbank.png')
