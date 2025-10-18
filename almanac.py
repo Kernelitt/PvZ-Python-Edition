@@ -69,7 +69,7 @@ class Almanac:
 
         # Plants section
 
-        self.plants_list = list(PLANT_SUN_COST.keys())
+        self.plants_list = list(game.user['unlocked_plants'])
         self.selected_plant = 'Peashooter'
 
         # Zombies section

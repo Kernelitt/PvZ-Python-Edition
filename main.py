@@ -4,7 +4,6 @@ import json
 import threading
 import queue
 from simple_framework import SimpleSettingsWindow, SimpleWindowScaler, SimplePygameField, SimplePygameButton, SimpleImageButton
-
 from os import getcwd
 print(getcwd())
 
@@ -491,12 +490,12 @@ class SeedSelect:
         self.banned_plants = banned_plants
         self.seed_bank_bg = pygame.image.load('images/SeedBank.png')
         # Scale by 1.8 like seedbank
-        self.seed_bank_bg = pygame.transform.scale(self.seed_bank_bg, (self.seed_bank_bg.get_width() * 1.8, self.seed_bank_bg.get_height() * 1.8))
+        self.seed_bank_bg = pygame.transform.smoothscale(self.seed_bank_bg, (self.seed_bank_bg.get_width() * 1.8, self.seed_bank_bg.get_height() * 1.8))
 
         # Load seed chooser background
         self.seed_chooser_bg = pygame.image.load('images/SeedChooser_Background.png')
         # Scale by 1.8 like seedbank
-        self.seed_chooser_bg = pygame.transform.scale(self.seed_chooser_bg, (self.seed_chooser_bg.get_width() * 1.8, self.seed_chooser_bg.get_height() * 1.8))
+        self.seed_chooser_bg = pygame.transform.smoothscale(self.seed_chooser_bg, (self.seed_chooser_bg.get_width() * 1.8, self.seed_chooser_bg.get_height() * 1.8))
 
         # Seed selection data
         self.all_plants = [p for p in PLANT_SUN_COST.keys() if p in self.game.user['unlocked_plants'] and p not in self.banned_plants]
@@ -529,7 +528,7 @@ class SeedSelect:
     def toggle_plant_selection(self, plant):
         if plant in self.selected_plants:
             self.selected_plants.remove(plant)
-        elif len(self.selected_plants) < 6:
+        elif len(self.selected_plants) < self.game.user['max_seeds']:
             self.selected_plants.append(plant)
         self.update_start_button()
 
@@ -569,12 +568,12 @@ class SeedSelect:
         offset = self.game.scaler.scale_x(5 * 2)
         for i, seed_name in enumerate(self.selected_plants):
             rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
-            scaled_seed = pygame.transform.scale(self.game.seed_image, (seed_w, seed_h))
+            scaled_seed = pygame.transform.smoothscale(self.game.seed_image, (seed_w, seed_h))
             screen.blit(scaled_seed, rect)
             # Draw plant icon on top
             if seed_name in self.game.plant_icons:
                 icon = self.game.plant_icons[seed_name]
-                scaled_icon = pygame.transform.scale(icon, (int(seed_w * 0.8), int(seed_h * 0.6)))
+                scaled_icon = pygame.transform.smoothscale(icon, (int(seed_w * 0.8), int(seed_h * 0.6)))
                 icon_rect = scaled_icon.get_rect(center=rect.center)
                 screen.blit(scaled_icon, icon_rect)
             # Draw white border to indicate selected
@@ -617,13 +616,13 @@ class SeedSelect:
             # Draw seed packets and plant icons on buttons
             for i, button in enumerate(self.plant_buttons):
                 # Draw seed packet background
-                scaled_seed = pygame.transform.scale(self.game.seed_image, (button.size[0], button.size[1]))
+                scaled_seed = pygame.transform.smoothscale(self.game.seed_image, (button.size[0], button.size[1]))
                 screen.blit(scaled_seed, button.position)
                 # Draw plant icon on top
                 plant_name = self.all_plants[i]
                 if plant_name in self.game.plant_icons:
                     icon = self.game.plant_icons[plant_name]
-                    scaled_icon = pygame.transform.scale(icon, (int(button.size[0] * 0.8), int(button.size[1] * 0.6)))
+                    scaled_icon = pygame.transform.smoothscale(icon, (int(button.size[0] * 0.8), int(button.size[1] * 0.6)))
                     icon_rect = scaled_icon.get_rect(center=(button.position[0] + button.size[0] // 2, button.position[1] + button.size[1] // 2))
                     screen.blit(scaled_icon, icon_rect)
                 # Draw border if selected
@@ -803,7 +802,7 @@ class MainGame:
 
     def draw_hotbar(self, screen):
         # Draw hotbar background image
-        scaled_seedbank = pygame.transform.scale(self.game.seedbank_image, (self.game.scaler.scale_x(self.game.seedbank_image.get_width()), self.game.scaler.scale_y(self.game.seedbank_image.get_height())))
+        scaled_seedbank = pygame.transform.smoothscale(self.game.seedbank_image, (self.game.scaler.scale_x(self.game.seedbank_image.get_width()), self.game.scaler.scale_y(self.game.seedbank_image.get_height())))
         screen.blit(scaled_seedbank, (0, 0))
         # Draw sun count
         sun_text = self.game.small_font.render(f"{self.sun_count}", True, "#000000")
@@ -825,11 +824,11 @@ class MainGame:
         for i, seed in enumerate(self.game.seed_packets):
             rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
             # Draw seed packet background
-            scaled_seed = pygame.transform.scale(self.game.seed_image, (seed_w, seed_h))
+            scaled_seed = pygame.transform.smoothscale(self.game.seed_image, (seed_w, seed_h))
             screen.blit(scaled_seed, rect)
             # Draw plant icon on top
             icon = seed['icon']
-            scaled_icon = pygame.transform.scale(icon, (int(seed_w * 1), int(seed_h * 0.7)))
+            scaled_icon = pygame.transform.smoothscale(icon, (int(seed_w * 1), int(seed_h * 0.7)))
             icon_rect = scaled_icon.get_rect(center=rect.center)
             screen.blit(scaled_icon, icon_rect)
             # Highlight selected seed
@@ -863,9 +862,9 @@ class MainGame:
         # Draw shovel
         shovel_x = seed_x_start + len(self.game.seed_packets) * (seed_w + offset) + 50
         shovel_rect = pygame.Rect(shovel_x, seed_y, 140, 144)
-        scaled_shovel_bank = pygame.transform.scale(self.game.shovel_bank_image, (140, 144))
+        scaled_shovel_bank = pygame.transform.smoothscale(self.game.shovel_bank_image, (140, 144))
         screen.blit(scaled_shovel_bank, shovel_rect)
-        scaled_shovel_icon = pygame.transform.scale(self.game.shovel_image, (120, 120))
+        scaled_shovel_icon = pygame.transform.smoothscale(self.game.shovel_image, (120, 120))
         icon_rect = scaled_shovel_icon.get_rect(center=shovel_rect.center)
         screen.blit(scaled_shovel_icon, icon_rect)
         if self.selected_shovel:
@@ -1115,11 +1114,11 @@ class MainGame:
         frame_height = self.game.flag_meter_image.get_height() // 2
         empty_frame = self.game.flag_meter_image.subsurface((0, 0, frame_width, frame_height))
         filled_frame = self.game.flag_meter_image.subsurface((0, frame_height, frame_width, frame_height))
-        scale = 0.6
-        empty_scaled = pygame.transform.scale(empty_frame, (int(frame_width * scale), int(frame_height * scale)))
-        filled_scaled = pygame.transform.scale(filled_frame, (int(frame_width * scale), int(frame_height * scale)))
-        bar_width = int(frame_width * scale)
-        bar_height = int(frame_height * scale)
+        smoothscale = 0.6
+        empty_scaled = pygame.transform.smoothscale(empty_frame, (int(frame_width * smoothscale), int(frame_height * smoothscale)))
+        filled_scaled = pygame.transform.smoothscale(filled_frame, (int(frame_width * smoothscale), int(frame_height * smoothscale)))
+        bar_width = int(frame_width * smoothscale)
+        bar_height = int(frame_height * smoothscale)
         x = self.game.width - bar_width - 20  # 20 px padding from right
         y = self.game.height - bar_height - 20  # 20 px padding from bottom
 
@@ -1158,7 +1157,7 @@ class MainGame:
                             if icon:
                                 preview = icon.copy()
                                 preview.set_alpha(128)
-                                scaled_preview = pygame.transform.scale(preview, (int(self.game_field.cell_width * 0.8), int(self.game_field.cell_height * 0.8)))
+                                scaled_preview = pygame.transform.smoothscale(preview, (int(self.game_field.cell_width * 0.8), int(self.game_field.cell_height * 0.8)))
                                 cell_x = self.game_field.field_x + col * self.game_field.cell_width
                                 cell_y = self.game_field.field_y + row * self.game_field.cell_height
                                 center_x = cell_x + (self.game_field.cell_width - scaled_preview.get_width()) // 2
@@ -1174,7 +1173,7 @@ class MainGame:
             zombie.draw(screen)
         if self.selected_shovel:
             mouse_pos = pygame.mouse.get_pos()
-            cursor_shovel = pygame.transform.scale(self.game.shovel_image, (40, 40))
+            cursor_shovel = pygame.transform.smoothscale(self.game.shovel_image, (40, 40))
             screen.blit(cursor_shovel, (mouse_pos[0] - cursor_shovel.get_width() // 2, mouse_pos[1] - cursor_shovel.get_height() // 2))
         if self.debug_mode:
             # draw wave and points
@@ -1398,6 +1397,7 @@ class Game:
         # Initialize pygame
         pygame.init()
         self.screen = pygame.display.set_mode((self.width, self.height))
+
         pygame.display.set_caption("Plants vs Zombies Python Edition")
 
         # Load levels
@@ -1411,13 +1411,17 @@ class Game:
                 self.user['completed_levels'] = set(self.user['completed_levels'])
                 if 'coins' not in self.user:
                     self.user['coins'] = 0
+                if 'max_seeds' not in self.user:
+                    self.user['max_seeds'] = 6
+                if 'seed_upgrade_count' not in self.user:
+                    self.user['seed_upgrade_count'] = 0
         except FileNotFoundError:
-            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter'], 'coins': 0}
+            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter'], 'coins': 0, 'max_seeds': 6, 'seed_upgrade_count': 0}
 
         # Load images
         self.seedbank_image = pygame.image.load('images/seedbank.png')
         # Scale seedbank by 2
-        self.seedbank_image = pygame.transform.scale(self.seedbank_image, (self.seedbank_image.get_width() * 1.8, self.seedbank_image.get_height() * 1.8))
+        self.seedbank_image = pygame.transform.smoothscale(self.seedbank_image, (self.seedbank_image.get_width() * 1.8, self.seedbank_image.get_height() * 1.8))
         self.flag_meter_image = pygame.image.load('images/FlagMeter.png')
         seeds_image = pygame.image.load('images/seeds.png')
         # Extract the third seed image (0-indexed as 2)
@@ -1427,9 +1431,9 @@ class Game:
         self.shovel_bank_image = pygame.image.load('images/ShovelBank.png')
         self.shovel_image = pygame.image.load('images/Shovel.png')
         # Scale shovel bank to match seed packet size (will be scaled per draw)
-        self.shovel_bank_image = pygame.transform.scale(self.shovel_bank_image, (50 * 1.8, 70 * 1.8))
+        self.shovel_bank_image = pygame.transform.smoothscale(self.shovel_bank_image, (50 * 1.8, 70 * 1.8))
         # Scale shovel icon appropriately
-        self.shovel_image = pygame.transform.scale(self.shovel_image, (40 * 1.8, 40 * 1.8))
+        self.shovel_image = pygame.transform.smoothscale(self.shovel_image, (40 * 1.8, 40 * 1.8))
 
         # Load plant icons
         self.plant_icons = {
@@ -1517,7 +1521,7 @@ class Game:
         total_width = scaled_bg_width * tile_count
         self.scaled_background = pygame.Surface((total_width, scaled_bg_height))
         for i in range(tile_count):
-            self.scaled_background.blit(pygame.transform.scale(background_image, (scaled_bg_width, scaled_bg_height)), (i * scaled_bg_width, 0))
+            self.scaled_background.blit(pygame.transform.smoothscale(background_image, (scaled_bg_width, scaled_bg_height)), (i * scaled_bg_width, 0))
 
     def draw_background(self, screen, offset_x):
         width_to_blit = min(self.width, self.scaled_background.get_width())
