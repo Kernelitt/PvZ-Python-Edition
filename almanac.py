@@ -150,22 +150,25 @@ class Almanac:
         for plant in self.plants_list:
             frames = []
             i = 1
+            plant_no_spaces = plant.replace(' ', '')
             while True:
                 try:
-                    frame = pygame.image.load(f'animations/Plants/{plant.lower()}/{plant}{i:04d}.png')
+                    frame = pygame.image.load(f'animations/Plants/{plant_no_spaces}/{plant_no_spaces}{i:04d}.png')
                     frames.append(frame)
                     i += 1
                 except:
                     break
             if frames:
-                self.plant_animations[plant] = frames
                 plant_type = plant.lower().replace(' ', '_')
                 idle_frames = get_animation_frames('idle', plant_type)
                 if not idle_frames and plant_type == 'lilypad':
                     idle_frames = get_animation_frames('blink', plant_type)
-                if not idle_frames:
-                    idle_frames = list(range(1, len(frames) + 1))
-                self.idle_frames[plant] = idle_frames
+                if idle_frames:
+                    self.plant_animations[plant] = [frames[f-1] for f in idle_frames]
+                    self.idle_frames[plant] = list(range(len(idle_frames)))
+                else:
+                    self.plant_animations[plant] = frames
+                    self.idle_frames[plant] = list(range(len(frames)))
             else:
                 self.plant_animations[plant] = None
                 self.idle_frames[plant] = []
@@ -353,8 +356,8 @@ class Almanac:
                 if plant == self.selected_plant:
                     pygame.draw.rect(self.screen, (255,255,255), pygame.Rect(button.position, button.size), 3)
             # Draw plant display
-            ground_x = self.scaler.scale_x(1350)
-            ground_y = self.scaler.scale_y(150)
+            ground_x = self.scaler.scale_x(1310)
+            ground_y = self.scaler.scale_y(190)
             self.screen.blit(self.plants_ground, (ground_x, ground_y))
             if self.plant_animations[self.selected_plant]:
                 if self.idle_frames[self.selected_plant]:
@@ -363,10 +366,10 @@ class Almanac:
                 else:
                     frame = self.plant_animations[self.selected_plant][self.current_frame]
                 scaled_frame = pygame.transform.scale(frame, (self.scaler.scale_x(150), self.scaler.scale_y(150)))
-                self.screen.blit(scaled_frame, (ground_x + self.scaler.scale_x(50), ground_y + self.scaler.scale_y(50)))
+                self.screen.blit(scaled_frame, (ground_x + self.scaler.scale_x(100), ground_y + self.scaler.scale_y(50)))
             # Plant card
             card_x = self.scaler.scale_x(1200)
-            card_y = self.scaler.scale_y(100)
+            card_y = self.scaler.scale_y(150)
             self.screen.blit(self.plant_card_bg, (card_x, card_y))
             # Name
             name = self.game.lawn_strings.get(self.selected_plant.upper().replace(' ', '_'), self.selected_plant)

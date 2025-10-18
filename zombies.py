@@ -299,6 +299,7 @@ class PoleVaulterZombie(Zombie):
                     self.frame_index = 0
                     self.animation_timer = 0.0
                     self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                    self.game_field.game.sound_manager.play_sound(f'polevault')
                 elif self.current_action == 'jump':
                     # Update jump animation
                     self.animation_timer += dt_effective
@@ -309,6 +310,7 @@ class PoleVaulterZombie(Zombie):
                             # Jump completed, teleport to next cell
                             self.x = plant_x - self.game_field.cell_width * 2
                             self.jumped = True
+                            self.speed = self.normal_speed  # Reduce speed after jump
                             self.current_action = 'walk'
                             self.frame_index = 0
                             self.animation_timer = 0.0
@@ -331,13 +333,17 @@ class PoleVaulterZombie(Zombie):
                 if target_col is not None:
                     # Target the plant
                     plant_x = self.game_field.field_x + target_col * self.game_field.cell_width
-                    if self.x > plant_x + self.game_field.cell_width / 2:
+                    if self.x > plant_x + self.game_field.cell_width / 4:
                         self.x -= self.speed * dt_effective
                         if self.current_action != 'walk':
                             self.current_action = 'walk'
                             self.frame_index = 0
                             self.animation_timer = 0.0
                             self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                        self.animation_timer += dt_effective
+                        if self.animation_timer >= self.frame_duration:
+                            self.animation_timer -= self.frame_duration
+                            self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
                     else:
                         # At plant, damage it
                         if self.current_action != 'attack':
@@ -345,6 +351,10 @@ class PoleVaulterZombie(Zombie):
                             self.frame_index = 0
                             self.animation_timer = 0.0
                             self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                        self.animation_timer += dt_effective
+                        if self.animation_timer >= self.frame_duration:
+                            self.animation_timer -= self.frame_duration
+                            self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
                         self.last_sound_time += dt_effective
                         self.damage_timer += dt_effective
                         if self.last_sound_time > 0.75:
@@ -365,15 +375,19 @@ class PoleVaulterZombie(Zombie):
                         self.frame_index = 0
                         self.animation_timer = 0.0
                         self.frame_duration = 1.0 / POLE_VAULTER_ZOMBIE_ANIMATIONS[self.current_action]['fps']
+                    self.animation_timer += dt_effective
+                    if self.animation_timer >= self.frame_duration:
+                        self.animation_timer -= self.frame_duration
+                        self.frame_index = (self.frame_index + 1) % len(self.animation_frames[self.current_action])
 
         self.rect.x = int(self.x)
-        self.rect.y = int(self.y)
+        self.rect.y = int(self.y + 80)
 
     def draw(self, screen):
         # Always draw the basic zombie
         frame = self.animation_frames[self.current_action][self.frame_index]
         scaled_frame = pygame.transform.scale(frame, (681 // 1.2, 480 // 1.2))
-        combined_surface = pygame.Surface((681 // 1.2, 480 // 1.2), pygame.SRCALPHA)
+        combined_surface = pygame.Surface((681, 480), pygame.SRCALPHA)
         combined_surface.blit(scaled_frame, (0, 30))
 
         # Visual effects
@@ -398,4 +412,4 @@ class PoleVaulterZombie(Zombie):
             del frame_alpha
             combined_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-        screen.blit(combined_surface, (self.x - 283, self.y-290))
+        screen.blit(combined_surface, (self.x - 283, self.y - 270))

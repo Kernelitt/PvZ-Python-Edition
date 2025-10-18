@@ -1,19 +1,19 @@
-# TODO: Integrate Coin System into PvZ Python Edition
+# Store Implementation Tasks
 
-## Completed Tasks
-- [x] Added Coin class in plants.py with update, draw, collect methods.
+## 1. Create StoreItem Class
+- Define StoreItem class with attributes: icon (pygame image), cost (int), position (tuple), page (int or str)
+- Use SimpleImageButton for interaction
 
-## Pending Tasks
-- [ ] Load coin_count from user.json in Game.__init__.
-- [ ] Add coins list and coin_count to MainGame.__init__.
-- [ ] Spawn Coin on zombie death in MainGame.update_wave.
-- [ ] Update coins in MainGame.update_wave.
-- [ ] Handle coin collection on click in MainGame.update.
-- [ ] Draw coins in MainGame.draw.
-- [ ] Display coin_count in слева-снизу.
-- [ ] Save coin_count to user.json on collection.
-- [ ] Test coin spawning on zombie death.
-- [ ] Test coin falling animation and ground collision.
-- [ ] Test coin rendering.
-- [ ] Test coin collection increments count, plays sound, saves.
-- [ ] Run game to ensure no errors and full functionality.
+## 2. Integrate StoreItem into Store Class
+- Add a list of StoreItem instances to Store.__init__
+- Populate the list with sample items (e.g., plants with costs from definitions.py)
+- Modify draw method to render items on the current page
+- Add page navigation if multiple pages
+
+## 3. Add Item Purchase Logic
+- Implement on_click for StoreItem to check user coins and deduct if sufficient
+- Update user.json with purchased items or upgrades
+
+## 4. Test Store Functionality
+- Run the game, navigate to store, verify items display
+- Test purchasing items and coin deduction

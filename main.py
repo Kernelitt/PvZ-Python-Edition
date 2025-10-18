@@ -99,6 +99,8 @@ class SoundManager:
             'zombie_attack1': 'sounds/chomp.ogg',
             'zombie_attack2': 'sounds/chomp2.ogg',
 
+            'zombies_are_coming': 'sounds/awooga.ogg',
+
             'plant_break': 'sounds/gulp.ogg',
 
             'bigchomp': 'sounds/bigchomp.ogg',
@@ -425,7 +427,10 @@ class MainMenu:
         self.game.state = 'almanac'
 
     def open_store(self):
-        print("Store...")
+        from store import Store
+        if not hasattr(self.game, 'store'):
+            self.game.store = Store(self.game)
+        self.game.state = 'store'
 
     def open_help(self):
         print("Help...")
@@ -804,6 +809,10 @@ class MainGame:
         sun_text = self.game.small_font.render(f"{self.sun_count}", True, "#000000")
         screen.blit(sun_text, (self.game.scaler.scale_x(30 * 2), self.game.scaler.scale_y(65 * 2)))
 
+        # Draw coin count
+        coin_text = self.game.small_font.render(f"{self.coin_count}", True, "#000000")
+        screen.blit(coin_text, (self.game.scaler.scale_x(30 * 2), self.game.scaler.scale_y(85 * 2)))
+
         # Draw seed packets
         seed_x_start = self.game.scaler.scale_x(80 * 2)
         seed_y = self.game.scaler.scale_y(8 * 2)
@@ -906,6 +915,17 @@ class MainGame:
                         if sun.rect.collidepoint(event.pos) and not sun.collected:
                             sun.collect()
                             break
+                    # Check coins
+                    for coin in self.coins:
+                        if coin.rect.collidepoint(event.pos) and not coin.collected:
+                            coin.collect()
+                            self.coin_count += coin.value
+                            self.game.user['coins'] = self.coin_count
+                            user_data = self.game.user.copy()
+                            user_data['completed_levels'] = list(user_data['completed_levels'])
+                            with open('user.json', 'w') as f:
+                                json.dump(user_data, f)
+                            break
                     # Plant on game field
                     if self.selected_seed is not None:
                         plant = self.game.seed_packets[self.selected_seed]
@@ -955,6 +975,13 @@ class MainGame:
 
         # Remove collected sky suns
         self.sky_suns = [s for s in self.sky_suns if not s.collected]
+
+        # Update coins
+        for coin in self.coins:
+            coin.update(dt)
+
+        # Remove collected coins
+        self.coins = [c for c in self.coins if not c.collected]
 
         # Update plants
         for row in range(self.game_field.rows):
@@ -1141,6 +1168,8 @@ class MainGame:
         self.draw_flag_meter(screen)
         for sun in self.sky_suns:
             sun.draw(screen)
+        for coin in self.coins:
+            coin.draw(screen)
         for zombie in self.zombies:
             zombie.draw(screen)
         if self.selected_shovel:
@@ -1360,11 +1389,11 @@ class Game:
             return strings
 
         # Run settings window to select resolution
-        settings_window = SimpleSettingsWindow()
-        settings = settings_window.run()
-
-        self.width = settings['width']
-        self.height = settings['height']
+        from tkinter import Tk
+        root = Tk()
+        self.width = root.winfo_screenwidth()
+        self.height = root.winfo_screenheight()
+        root.destroy()  # Закрываем окно, чтобы не мешало
 
         # Initialize pygame
         pygame.init()
@@ -1431,7 +1460,7 @@ class Game:
         self.pico_font = pygame.font.Font('pico12.ttf', int(self.scaler.scale_y(20)))
 
         # Load LawnStrings.txt
-        self.lawn_strings = parse_lawnstrings('properties/RU-russian.txt')
+        self.lawn_strings = parse_lawnstrings('properties/languages/RU-russian.txt')
 
         # Game state
         self.state = 'menu'
@@ -1575,6 +1604,8 @@ class Game:
                     self.pause_menu.update(event)
                 elif self.state == 'almanac':
                     self.almanac.update(event)
+                elif self.state == 'store':
+                    self.store.update(event)
                 elif self.state == 'welcome':
                     pass  # no events needed
                 elif self.state == 'level_menu':
@@ -1624,6 +1655,8 @@ class Game:
                     self.pause_menu.draw()
                 elif self.state == 'almanac':
                     self.almanac.draw()
+                elif self.state == 'store':
+                    self.store.draw()
                 elif self.state == 'welcome':
                     self.welcome_screen.draw(self.screen)
                 elif self.state == 'level_menu':

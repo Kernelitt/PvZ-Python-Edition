@@ -63,6 +63,27 @@ POLE_VAULTER_ZOMBIE_ANIMATIONS = {
     },
 }
 
+SCREENDOOR_ZOMBIE_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 30,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 12
+    },
+    'idle2': {
+        'start_frame': 31,
+        'end_frame': 45,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 12
+    },
+    'walk': {
+        'start_frame': 46,
+        'end_frame': 92,  # Adjust based on actual frames
+        'loop': True,
+        'fps': 12
+    }
+
+}
 PEASHOOTER_ANIMATIONS = {
     'idle': {
         'start_frame': 80,

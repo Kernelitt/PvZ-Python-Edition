@@ -1242,10 +1242,10 @@ class Coin:
         self.game = game
         self.value = 10
         self.collected = False
-        self.animation_frames = preloaded_images['sun_idle']  # Reuse sun animation for now
+        self.animation_frames = preloaded_images['coin_silver']  # Reuse sun animation for now
         self.current_frame = 0
         self.frame_timer = 0.0
-        self.frame_duration = 1.0 / SUN_ANIMATIONS['idle']['fps']
+        self.frame_duration = 1.0 / COIN_SILVER_ANIMATIONS['idle']['fps']
         self.rect = self.animation_frames[0].get_rect(center=(self.x, self.y))
         # Fall straight down
         self.speed_x = 0

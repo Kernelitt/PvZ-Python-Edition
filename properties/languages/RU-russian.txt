@@ -1,12 +1,3 @@
-[LOCALE]
-English_United States
-
-[CURRENCY_SYMBOL]
-$
-
-[CURRENCY_STRING]
-{CURRENCY_SYMBOL}{AMOUNT}
-
 [PEASHOOTER]
 Горохострел
 
@@ -316,7 +307,7 @@ $
 Взрывается при контакте.
 
 [GIANT_WALLNUT]
-Гигантская Стена-Орех
+Гигантский Стена-Орех
 
 [SPROUT]
 Росток
@@ -3191,86 +3182,6 @@ $
 [CREDITS_GAMENAME]
 Растения против Зомби
 
-[CREDITS_ROLES1]
-^Растения против Зомби
-[CREDITS_NAMES1]
-
-[CREDITS_ROLES2]
-^
-[CREDITS_NAMES2]
-
-[CREDITS_ROLES3]
-Дизайн Игры
-Программирование
-Графика
-Музыка и Звуки
-Фоновая Графика
-Графика Интерфейса
-Сценарий
-
-[CREDITS_NAMES3]
-Джордж Фан
-Тод Сэмпл
-Рич Вернер
-Лаура Шигихара
-Энрике Кортс
-Мэтт Холмберг
-Стивен Нотли
-
-[CREDITS_ROLES4]
-^
-[CREDITS_NAMES4]
-
-
-[CREDITS_ROLES5]
-Директор Студии
-КА Глава
-КА Тестинг
-Попкап Фреймворк
-Мармот Сэйлсман
-Особое Спасибо
-
-[CREDITS_NAMES5]
-Сукбир Сидху
-Майк Рациоппи
-Шон Конард, Эд Миллер, Адам Макдоннелл
-Брайан Фити, Крис Харгроув, Давид Партон
-Девид П. Уайклифф
-Джейсон Капалка, Джон Виши, Дейв Хаас, 
-Дейв Робертс, Эд Браун, Линдсей Курц, 
-Джеф Гейтс, Мистиксэйдж, Дэйв Рорль, 
-Рорсар Бета-тестеры
-
-[CREDITS_ROLES6]
-^
-[CREDITS_NAMES6]
-
-[CREDITS_ROLES7]
-^Наполнение "Игры Года"
-[CREDITS_NAMES7]
-
-[CREDITS_ROLES8]
-^
-[CREDITS_NAMES8]
-
-[CREDITS_ROLES9]
-Программирование
-Графика
-Продюсер
-Поддержка
-Тестирование
-
-[CREDITS_NAMES9]
-Девид Франзи
-Монте Мишелис
-Т. Карл Квох
-Майкл Фромвиллер
-Боб Чурч
-
-[CREDITS_ROLES10]
-^
-[CREDITS_NAMES10]
-
 [CREDITS_ROLES11]
 Спасибо за игру!
 [CREDITS_NAMES11]
@@ -3518,31 +3429,4 @@ PopCap Games Presents
 
 [MULTIPLIED_X]
 x%d
-
-[SQUIRREL]
-Белка
-
-[TREE_OF_WISDOM]
-Дерево Мудрости
-
-[UPSELL]
-Продажа
-
-[INTRO]
-Вступление
-
-[IMITATED_PLANT]
-Имитатор {PLANT}
-
-[CREDIT_GAME_DESIGN]
-Дизайн игры
-
-[CREDITS_PROGRAMMING]
-Программирование
-
-[CREDITS_ART]
-Графика
-
-[CREDITS_MUSIC_SOUND]
-Музыка и звук
 
