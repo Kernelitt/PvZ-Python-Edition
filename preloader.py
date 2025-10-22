@@ -1,4 +1,5 @@
 import pygame
+import os
 from zombie_animations import *
 
 preloaded_images = {}
@@ -18,36 +19,60 @@ def preload_zombie_animations():
 
 def preload_plant_animations():
     print("Preloading plant animations...")
+    preloaded_images['plant_shadow'] = pygame.image.load('reanim\pot_shadow.png').convert_alpha()
     plant_data = {
-        'peashooter': ('peashooter', PEASHOOTER_ANIMATIONS, 'Peashooter'),
-        'sunflower': ('sunflower', SUNFLOWER_ANIMATIONS, 'Sunflower'),
-        'cherrybomb': ('cherrybomb', CHERRYBOMB_ANIMATIONS, 'Cherrybomb'),
-        'wallnut': ('wallnut', WALLNUT_ANIMATIONS, 'Wallnut'),
-        'potato_mine': ('potato_mine', POTATO_MINE_ANIMATIONS, 'PotatoMine'),
-        'snow_pea': ('snow_pea', SNOW_PEA_ANIMATIONS, 'SnowPea'),
-        'chomper': ('chomper', CHOMPER_ANIMATIONS, 'Chomper'),
-        'repeater': ('repeater', REPEATER_ANIMATIONS, 'Repeater'),
-        'lilypad': ('lilypad', LILYPAD_ANIMATIONS, 'LilyPad'),
-        'puffshroom': ('puffshroom', PUFF_SHROOM_ANIMATIONS, 'PuffShroom'),
-        'sun_shroom': ('sun_shroom', SUN_SHROOM_ANIMATIONS, 'SunShroom'),
-        'fume_shroom': ('fume_shroom', FUME_SHROOM_ANIMATIONS, 'FumeShroom'),
-        'grave_buster': ('grave_buster', GRAVE_BUSTER_ANIMATIONS, 'GraveBuster'),
+        'peashooter': ('peashooter', PEASHOOTER_ANIMATIONS),
+        'sunflower': ('sunflower', SUNFLOWER_ANIMATIONS),
+        'cherrybomb': ('cherrybomb', CHERRYBOMB_ANIMATIONS),
+        'wallnut': ('wallnut', WALLNUT_ANIMATIONS),
+        'potato_mine': ('potato_mine', POTATO_MINE_ANIMATIONS),
+        'snow_pea': ('snow_pea', SNOW_PEA_ANIMATIONS),
+        'chomper': ('chomper', CHOMPER_ANIMATIONS),
+        'repeater': ('repeater', REPEATER_ANIMATIONS),
+        'lilypad': ('lilypad', LILYPAD_ANIMATIONS),
+        'puffshroom': ('puffshroom', PUFFSHROOM_ANIMATIONS),
+        'sun_shroom': ('sun_shroom', SUN_SHROOM_ANIMATIONS),
+        'fume_shroom': ('fume_shroom', FUME_SHROOM_ANIMATIONS),
+        'grave_buster': ('grave_buster', GRAVE_BUSTER_ANIMATIONS),
     }
-    for key, (anim_type, anims, filename_prefix) in plant_data.items():
-        for action in anims:
-            frames = get_animation_frames(action, anim_type)
-            preloaded_images[f'{key}_{action}'] = [pygame.image.load(f'animations/Plants/{key.replace("_", "")}/{filename_prefix}{f:04d}.png').convert_alpha() for f in frames]
+    for key, (anim_type, anims) in plant_data.items():
+        # Try atlas first
+        title = anim_type.replace("_", " ").title().replace(" ", "")
+        atlas_path = f'animations/Plants/{anim_type}/atlas_{title}0001.png'
+        old_title = anim_type.replace("_", " ").title().replace(" ", "_")
+        old_sheet_path = f'animations/Plants/{anim_type}/{old_title}.png'
+        sheet_path = atlas_path if os.path.exists(atlas_path) else old_sheet_path
+        try:
+            sheet = pygame.image.load(sheet_path).convert_alpha()
+            max_end = max(anim['end_frame'] for anim in anims.values())
+            frame_width = sheet.get_width() // max_end
+            frame_height = sheet.get_height()
+            for action in anims:
+                anim = anims[action]
+                start_idx = anim['start_frame'] - 1
+                frame_count = anim['end_frame'] - anim['start_frame'] + 1
+                frames = []
+                for i in range(frame_count):
+                    x = (start_idx + i) * frame_width
+                    if x + frame_width > sheet.get_width():
+                        break
+                    frame = sheet.subsurface((x, 0, frame_width, frame_height))
+                    frames.append(frame)
+                preloaded_images[f'{key}_{action}'] = frames
+        except Exception as e:
+            print(f"Error loading animations for {key}: {e}")
+            for action in anims:
+                preloaded_images[f'{key}_{action}'] = []
 
     # Preload sun animations
     frames = get_animation_frames('idle', 'sun')
-    preloaded_images['sun_idle'] = [pygame.image.load(f'animations/sun/Sun{f:04d}.png').convert_alpha() for f in frames]
+    preloaded_images['sun_idle'] = frames
     print("Plant animations preloaded.")
 
 def preload_coin_animations():
-    print("Preloading sun animations...")
     frames = get_animation_frames('idle', 'coin_silver')
-    preloaded_images['coin_silver'] = [pygame.image.load(f'animations/collectable/Coin_silver/Coin_silver{f:04d}.png').convert_alpha() for f in frames]
-    print("Sun animations preloaded.")
+    preloaded_images['coin_silver'] = frames
+    print("Coin animations preloaded.")
 
 def preload_ui():
     print("Preloading UI images...")
@@ -59,8 +84,66 @@ def preload_ui():
     preloaded_images['almanac_closebuttonhighlight'] = pygame.image.load('images/Almanac_CloseButtonHighlight.png').convert_alpha()
     print("UI images preloaded.")
 
+def preload_plant_icons():
+    plant_data = {
+        'Peashooter': ('peashooter', 'idle'),
+        'Sunflower': ('sunflower', 'idle'),
+        'Cherry Bomb': ('cherrybomb', 'idle'),
+        'Wall Nut': ('wallnut', 'idle'),
+        'Potato Mine': ('potato_mine', 'idle'),
+        'Snow Pea': ('snow_pea', 'idle'),
+        'Chomper': ('chomper', 'idle'),
+        'Repeater': ('repeater', 'idle'),
+        'Puff Shroom': ('puffshroom', 'idle'),
+        'Sun Shroom': ('sun_shroom', 'idle'),
+        'Fume Shroom': ('fume_shroom', 'idle'),
+        'Grave Buster': ('grave_buster', 'idle'),
+        'Lily Pad': ('lilypad', 'idle'),
+    }
+    preloaded_images['plant_icons'] = {}
+    for name, (anim_type, action) in plant_data.items():
+        # Try icon file first
+        title = anim_type.replace("_", " ").title().replace(" ", "")
+        icon_path = f'animations/Plants/{anim_type}/icon_{title}0001.png'
+        if os.path.exists(icon_path):
+            try:
+                icon = pygame.image.load(icon_path).convert_alpha()
+                preloaded_images['plant_icons'][name] = icon
+            except Exception as e:
+                print(f"Error loading icon for {name}: {e}")
+                preloaded_images['plant_icons'][name] = None
+        else:
+            # Fallback to atlas or old sheet
+            atlas_path = f'animations/Plants/{anim_type}/atlas_{title}0001.png'
+            old_sheet_path = f'animations/Plants/{anim_type}/{anim_type.title()}.png'
+            sheet_path = atlas_path if os.path.exists(atlas_path) else old_sheet_path
+            try:
+                sheet = pygame.image.load(sheet_path).convert_alpha()
+                if sheet_path == old_sheet_path:
+                    # Old single image, use whole as icon
+                    icon = sheet
+                else:
+                    # Atlas sprite sheet, subsurface the first frame of action
+                    anims_name = f'{anim_type.upper()}_ANIMATIONS'
+                    if anims_name in globals():
+                        anims = globals()[anims_name]
+                    else:
+                        anims_name = f'{anim_type.upper().replace("_", "")}_ANIMATIONS'
+                        anims = globals()[anims_name]
+                    max_end = max(anim['end_frame'] for anim in anims.values())
+                    frame_width = sheet.get_width() // max_end
+                    frame_height = sheet.get_height()
+                    anim = anims[action]
+                    start_idx = anim['start_frame'] - 1
+                    icon = sheet.subsurface((start_idx * frame_width, 0, frame_width, frame_height))
+                preloaded_images['plant_icons'][name] = icon
+            except Exception as e:
+                print(f"Error loading icon for {name}: {e}")
+                preloaded_images['plant_icons'][name] = None
+
 def preload_all():
     preload_zombie_animations()
     preload_plant_animations()
     preload_coin_animations()
     preload_ui()
+    preload_plant_icons()

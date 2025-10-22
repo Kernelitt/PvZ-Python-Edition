@@ -32,7 +32,7 @@ class Projectile:
             self.active = False
 
     def draw(self, screen):
-        screen.blit(pygame.transform.scale(self.image,(32,32)), self.rect)
+        screen.blit(pygame.transform.scale(self.image,(48,48)), self.rect)
 
     def collides_with(self, zombie):
         # Simple rect collision
@@ -58,7 +58,8 @@ class Plant:
 
     def draw(self, screen):
         # Placeholder: draw a rectangle for the plant
-        pygame.draw.rect(screen, (0, 188, 0), (self.x + 50, self.y + 70, 70, 70))
+        shadow = preloaded_images["plant_shadow"]
+        screen.blit(shadow,(10,100))
 
     def take_damage(self, amount):
         self.health -= amount
@@ -82,6 +83,8 @@ class Peashooter(Plant):
         self.animation_frames = {}
         for action in PEASHOOTER_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'peashooter_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
+
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -169,6 +172,7 @@ class Peashooter(Plant):
 
 
     def draw(self, screen):
+        super().draw(screen) 
         if self.current_action == 'idle':
             frame = self.animation_frames['idle'][self.idle_frame_index]
         elif self.current_action == 'blink':
@@ -188,7 +192,7 @@ class Peashooter(Plant):
             frame_alpha = pygame.surfarray.pixels_alpha(frame)
             tint_alpha[:] = frame_alpha
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
-        scaled_frame = pygame.transform.scale(frame, (180, 180))
+        scaled_frame = pygame.transform.scale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
         # Draw projectiles
         for projectile in self.projectiles:
@@ -206,6 +210,7 @@ class Sunflower(Plant):
         self.animation_frames = {}
         for action in SUNFLOWER_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'sunflower_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -265,6 +270,7 @@ class CherryBomb(Plant):
         self.animation_frames = {}
         for action in CHERRYBOMB_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'cherrybomb_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -327,6 +333,7 @@ class WallNut(Plant):
         self.animation_frames = {}
         for action in WALLNUT_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'wallnut_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -361,7 +368,6 @@ class PotatoMine(Plant):
         self.timer = self.arming_delay
         self.armed = False
         self.exploded = False
-        self.rect = pygame.Rect(self.x, self.y, 80, 80)
 
         # Animation state
         self.current_action = 'not_armed'
@@ -381,6 +387,7 @@ class PotatoMine(Plant):
         self.animation_frames = {}
         for action in POTATO_MINE_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'potato_mine_{action}']
+        self.rect = self.animation_frames['not_armed'][0].get_rect(center=(self.x, self.y))
 
     def update(self, dt):
         if self.exploded:
@@ -511,6 +518,7 @@ class SnowPea(Plant):
         self.animation_frames = {}
         for action in SNOW_PEA_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'snow_pea_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -631,6 +639,7 @@ class Chomper(Plant):
         self.animation_frames = {}
         for action in CHOMPER_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'chomper_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -737,6 +746,7 @@ class Repeater(Plant):
         self.animation_frames = {}
         for action in REPEATER_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'repeater_{action}']
+        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -910,7 +920,7 @@ class PuffShroom(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in PUFF_SHROOM_ANIMATIONS:
+        for action in PUFFSHROOM_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'puffshroom_{action}']
         self.current_action = 'idle'
         self.idle_frame_index = 0
@@ -928,7 +938,7 @@ class PuffShroom(Plant):
         if self.asleep:
             # Update sleep animation
             self.sleep_timer += dt
-            sleep_fps = PUFF_SHROOM_ANIMATIONS['sleep']['fps']
+            sleep_fps = PUFFSHROOM_ANIMATIONS['sleep']['fps']
             if self.sleep_timer >= 1.0 / sleep_fps:
                 self.sleep_timer -= 1.0 / sleep_fps
                 self.sleep_frame_index = (self.sleep_frame_index + 1) % len(self.animation_frames['sleep'])
@@ -937,7 +947,7 @@ class PuffShroom(Plant):
         # Update idle animation (pauses during blink/shoot)
         if self.current_action not in ['blink', 'shoot']:
             self.idle_timer += dt
-            idle_fps = PUFF_SHROOM_ANIMATIONS['idle']['fps']
+            idle_fps = PUFFSHROOM_ANIMATIONS['idle']['fps']
             if self.idle_timer >= 1.0 / idle_fps:
                 self.idle_timer -= 1.0 / idle_fps
                 self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
@@ -963,7 +973,7 @@ class PuffShroom(Plant):
         # Update blink animation
         if self.current_action == 'blink':
             self.blink_timer += dt
-            blink_fps = PUFF_SHROOM_ANIMATIONS['blink']['fps']
+            blink_fps = PUFFSHROOM_ANIMATIONS['blink']['fps']
             if self.blink_timer >= 1.0 / blink_fps:
                 self.blink_timer -= 1.0 / blink_fps
                 self.blink_frame_index += 1
@@ -974,7 +984,7 @@ class PuffShroom(Plant):
         # Update shoot animation
         if self.current_action == 'shoot':
             self.shoot_timer += dt
-            shoot_fps = PUFF_SHROOM_ANIMATIONS['shoot']['fps']
+            shoot_fps = PUFFSHROOM_ANIMATIONS['shoot']['fps']
             if self.shoot_timer >= 1.0 / shoot_fps:
                 self.shoot_timer -= 1.0 / shoot_fps
                 self.shoot_frame_index += 1
@@ -1242,11 +1252,13 @@ class Coin:
         self.game = game
         self.value = 10
         self.collected = False
-        self.animation_frames = preloaded_images['coin_silver']  # Reuse sun animation for now
+        self.animation_frames = preloaded_images['coin_silver']
         self.current_frame = 0
         self.frame_timer = 0.0
         self.frame_duration = 1.0 / COIN_SILVER_ANIMATIONS['idle']['fps']
         self.rect = self.animation_frames[0].get_rect(center=(self.x, self.y))
+
+
         # Fall straight down
         self.speed_x = 0
         self.speed_y = 50  # downward

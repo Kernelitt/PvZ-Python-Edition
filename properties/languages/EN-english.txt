@@ -3181,3 +3181,6 @@ Do you wish to replay level 3-4?
 [MULTIPLIED_X]
 x%d
 
+[CURRENCY_SYMBOL]
+$
+

@@ -16,12 +16,15 @@ class Store:
         self.screen = game.screen
         self.scaler = game.scaler
         self.current_page = 1
+        self.currency_symbol = self.game.lawn_strings.get("CURRENCY_SYMBOL","$")
+        self.coin_font = pygame.font.Font('BrianneTod.ttf', int(self.scaler.scale_y(48)))
 
         # Load background image for almanac index
         self.bg_image = pygame.image.load('images/Store_Background.png')
         self.bg_car = pygame.image.load('images/Store_Car.png')
 
         self.cost_bg = pygame.image.load('images/Store_PriceTag.png')
+        self.coinbank_image = pygame.image.load('images/coinbank.png')
         self.buttons = []
         self.items = []
 
@@ -94,6 +97,11 @@ class Store:
 
         self.screen.blit(self.bg_car, (600, 230))
 
+        # Draw coinbank and coin count
+        self.screen.blit(self.coinbank_image, (50, 1010))  # Position the coinbank image
+        coin_text = self.coin_font.render(str(self.game.user.get('coins', 0))+self.currency_symbol, True, (255, 255, 255))
+        self.screen.blit(coin_text, (210, 1020))  # Position the coin count text next to the coinbank
+
         for button in self.buttons:
             button.draw(self.screen,self.game.font)
 
@@ -106,5 +114,5 @@ class Store:
                 button.draw(self.screen)
                 # Draw cost text
                 self.screen.blit(self.cost_bg, (pos[0] + 10, pos[1] + 130))
-                cost_text = self.game.pico_font.render(str(item.cost), True, (0, 0, 0))
+                cost_text = self.game.small_font.render(str(item.cost)+self.currency_symbol, True, (0, 0, 0))
                 self.screen.blit(cost_text, (pos[0] + 30, pos[1] + 140))

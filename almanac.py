@@ -147,26 +147,43 @@ class Almanac:
         # Plant animations
         self.plant_animations = {}
         self.idle_frames = {}
+        import json
+        import os
         for plant in self.plants_list:
-            frames = []
-            i = 1
             plant_no_spaces = plant.replace(' ', '')
-            while True:
-                try:
-                    frame = pygame.image.load(f'animations/Plants/{plant_no_spaces}/{plant_no_spaces}{i:04d}.png')
+            plant_dir = plant_no_spaces.lower()
+            atlas_path = f'animations/Plants/{plant_dir}/atlas_{plant_no_spaces}0001.png'
+            json_path = f'animations/Plants/{plant_dir}/{plant_no_spaces}.json'
+            frames = []
+            if os.path.exists(atlas_path) and os.path.exists(json_path):
+                # Load from atlas
+                with open(json_path) as f:
+                    data = json.load(f)
+                frame_width = data['frame_width']
+                frame_height = data['frame_height']
+                total_frames = data['total_frames']
+                sheet = pygame.image.load(atlas_path).convert_alpha()
+                for i in range(total_frames):
+                    frame = sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
                     frames.append(frame)
-                    i += 1
-                except:
-                    break
+            else:
+                # Load individual frames
+                i = 1
+                while True:
+                    try:
+                        frame = pygame.image.load(f'animations/Plants/{plant_no_spaces}/{plant_no_spaces}{i:04d}.png')
+                        frames.append(frame)
+                        i += 1
+                    except:
+                        break
             if frames:
                 plant_type = plant.lower().replace(' ', '_')
                 idle_frames = get_animation_frames('idle', plant_type)
-                if not idle_frames and plant_type == 'lilypad':
-                    idle_frames = get_animation_frames('blink', plant_type)
                 if idle_frames:
-                    self.plant_animations[plant] = [frames[f-1] for f in idle_frames]
+                    self.plant_animations[plant] = ["idle"]
                     self.idle_frames[plant] = list(range(len(idle_frames)))
                 else:
+                    # Use all frames as idle if no idle animation defined
                     self.plant_animations[plant] = frames
                     self.idle_frames[plant] = list(range(len(frames)))
             else:
@@ -205,8 +222,9 @@ class Almanac:
         # Colors for description tags
         self.keyword_color = "#0C24F8"
         self.stat_color = "#F80C0C"
-        self.flavor_color = "#A77814"
+        self.flavor_color = "#8f431b"
         self.nocturnal_color = "#800080"  # purple
+        self.aquatic_color = "#00FFFF"  # purple
 
     def on_plant_button(self):
         self.current_section = 'plants'
@@ -223,6 +241,7 @@ class Almanac:
 
     def select_plant(self, plant):
         self.selected_plant = plant
+        self.current_frame = 0  # Reset animation frame when switching plants
 
     def select_zombie(self, zombie):
         self.selected_zombie = zombie
@@ -267,6 +286,8 @@ class Almanac:
                         current_color = self.flavor_color
                     elif tag == "NOCTURNAL":
                         current_color = self.nocturnal_color
+                    elif tag == "AQUATIC":
+                        current_color = self.aquatic_color
                     elif tag == "SHORTLINE":
                         parts.append(("SHORTLINE", None))
                         break
@@ -380,7 +401,7 @@ class Almanac:
             desc = self.game.lawn_strings.get(desc_key, "")
             header_key = self.selected_plant.upper().replace(' ', '_') + '_DESCRIPTION_HEADER'
             header = self.game.lawn_strings.get(header_key, "")
-            y_offset = card_y + self.scaler.scale_y(500)
+            y_offset = card_y + self.scaler.scale_y(450)
             # Header
             wrapped_header = self.wrap_text(header, 550)
             for line in wrapped_header:

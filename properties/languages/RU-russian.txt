@@ -3430,3 +3430,5 @@ PopCap Games Presents
 [MULTIPLIED_X]
 x%d
 
+[CURRENCY_SYMBOL]
+$

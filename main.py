@@ -123,6 +123,7 @@ class SoundManager:
             'finalwave': 'sounds/finalwave.ogg',
             'hugewave': 'sounds/hugewave.ogg',
             'readysetplant': 'sounds/readysetplant.ogg',
+            'roll_in': 'sounds/roll_in.ogg',
             'finalfanfare': 'sounds/finalfanfare.ogg',
             'prize': 'sounds/prize.ogg',
             'slotmachine': 'sounds/slotmachine.ogg',
@@ -289,15 +290,16 @@ class MainMenu:
         self.animation_timer = 0.0
         self.frame_duration = 1.0 / 24
         self.playing_animation = True
+        self.background_frame = None  # Static background after frame 13
 
         self.image_buttons = []
 
         # Adventure button
-        adventure_normal = pygame.image.load('reanim/SelectorScreen_Adventure_button.png')
-        adventure_hover = pygame.image.load('reanim/SelectorScreen_Adventure_highlight.png')
+        adventure_normal = pygame.image.load('reanim/SelectorScreen_StartAdventure.png')
+        adventure_hover = pygame.image.load('reanim/SelectorScreen_StartAdventure_highlight.png')
         adventure_button = SimpleImageButton(
-            (game.scaler.scale_x(1000), game.scaler.scale_y(160)),
-            (game.scaler.scale_x(adventure_normal.get_width()*1.6), game.scaler.scale_y(adventure_normal.get_height()*1.6)),
+            (game.scaler.scale_x(1200), game.scaler.scale_y(125)),
+            (game.scaler.scale_x(adventure_normal.get_width()*1.8), game.scaler.scale_y(adventure_normal.get_height()*1.8)),
             adventure_normal,
             adventure_hover,
             self.start_game
@@ -308,8 +310,8 @@ class MainMenu:
         minigames_normal = pygame.image.load('reanim/SelectorScreen_Minigames_button.png')
         minigames_hover = pygame.image.load('reanim/SelectorScreen_Minigames_highlight.png')
         minigames_button = SimpleImageButton(
-            (game.scaler.scale_x(1000), game.scaler.scale_y(320)),
-            (game.scaler.scale_x(minigames_normal.get_width()*1.6), game.scaler.scale_y(minigames_normal.get_height()*1.6)),
+            (game.scaler.scale_x(1205), game.scaler.scale_y(315)),
+            (game.scaler.scale_x(minigames_normal.get_width()*1.8), game.scaler.scale_y(minigames_normal.get_height()*1.8)),
             minigames_normal,
             minigames_hover,
             self.open_minigames
@@ -320,8 +322,8 @@ class MainMenu:
         puzzle_normal = pygame.image.load('reanim/SelectorScreen_Puzzles_button.png')
         puzzle_hover = pygame.image.load('reanim/SelectorScreen_Puzzles_highlight.png')
         puzzle_button = SimpleImageButton(
-            (game.scaler.scale_x(1000), game.scaler.scale_y(470)),
-            (game.scaler.scale_x(puzzle_normal.get_width()*1.6), game.scaler.scale_y(puzzle_normal.get_height()*1.6)),
+            (game.scaler.scale_x(1220), game.scaler.scale_y(475)),
+            (game.scaler.scale_x(puzzle_normal.get_width()*1.8), game.scaler.scale_y(puzzle_normal.get_height()*1.8)),
             puzzle_normal,
             puzzle_hover,
             self.open_puzzle
@@ -332,8 +334,8 @@ class MainMenu:
         survival_normal = pygame.image.load('reanim/SelectorScreen_Survival_button.png')
         survival_hover = pygame.image.load('reanim/SelectorScreen_Survival_highlight.png')
         survival_button = SimpleImageButton(
-            (game.scaler.scale_x(1000), game.scaler.scale_y(610)),
-            (game.scaler.scale_x(survival_normal.get_width()*1.6), game.scaler.scale_y(survival_normal.get_height()*1.6)),
+            (game.scaler.scale_x(1220), game.scaler.scale_y(600)),
+            (game.scaler.scale_x(survival_normal.get_width()*1.8), game.scaler.scale_y(survival_normal.get_height()*1.8)),
             survival_normal,
             survival_hover,
             self.open_survival
@@ -341,7 +343,7 @@ class MainMenu:
         self.image_buttons.append(survival_button)
 
         almanac_button = SimpleImageButton(
-            (game.scaler.scale_x(850), game.scaler.scale_y(800)),
+            (game.scaler.scale_x(1160), game.scaler.scale_y(780)),
             (game.scaler.scale_x(99*1.6), game.scaler.scale_y(99*1.6)),
             pygame.image.load('images/SelectorScreen_Almanac.png'),
             pygame.image.load('images/SelectorScreen_AlmanacHighlight.png'),
@@ -350,8 +352,8 @@ class MainMenu:
         self.image_buttons.append(almanac_button)
 
         store_button = SimpleImageButton(
-            (game.scaler.scale_x(960), game.scaler.scale_y(850)),
-            (game.scaler.scale_x(130*1.6), game.scaler.scale_y(89*1.6)),
+            self.game.scaler.scale(1270, 830),
+            self.game.scaler.scale(130*1.6, 89*1.6),
             pygame.image.load('images/SelectorScreen_Store.png'),
             pygame.image.load('images/SelectorScreen_StoreHighlight.png'),
             self.open_store
@@ -359,8 +361,8 @@ class MainMenu:
         self.image_buttons.append(store_button)
 
         help_button = SimpleImageButton(
-            (game.scaler.scale_x(1270), game.scaler.scale_y(950)),
-            (game.scaler.scale_x(48*2), game.scaler.scale_y(22*2)),
+            (game.scaler.scale_x(1640), game.scaler.scale_y(960)),
+            (game.scaler.scale_x(48*1.8), game.scaler.scale_y(22*1.8)),
             pygame.image.load('images/SelectorScreen_Help1.png'),
             pygame.image.load('images/SelectorScreen_Help2.png'),
             self.open_help
@@ -368,8 +370,8 @@ class MainMenu:
         self.image_buttons.append(help_button)
 
         options_button = SimpleImageButton(
-            (game.scaler.scale_x(1400), game.scaler.scale_y(1000)),
-            (game.scaler.scale_x(81*1.2), game.scaler.scale_y(31*1.2)),
+            (game.scaler.scale_x(1490), game.scaler.scale_y(890)),
+            (game.scaler.scale_x(81*1.8), game.scaler.scale_y(31*1.8)),
             pygame.image.load('images/SelectorScreen_Options1.png'),
             pygame.image.load('images/SelectorScreen_Options2.png'),
             self.open_settings
@@ -377,8 +379,8 @@ class MainMenu:
         self.image_buttons.append(options_button)
 
         quit_button = SimpleImageButton(
-            (game.scaler.scale_x(1530), game.scaler.scale_y(970)),
-            (game.scaler.scale_x(47*2), game.scaler.scale_y(27*2)),
+            (game.scaler.scale_x(1770), game.scaler.scale_y(920)),
+            (game.scaler.scale_x(47*1.8), game.scaler.scale_y(27*1.8)),
             pygame.image.load('images/SelectorScreen_Quit1.png'),
             pygame.image.load('images/SelectorScreen_Quit2.png'),
             self.quit_game
@@ -462,6 +464,8 @@ class MainMenu:
             if self.animation_timer >= self.frame_duration:
                 self.animation_timer -= self.frame_duration
                 self.current_frame += 1
+                if self.current_frame == 13:  # After frame 13 (index 12), set background to frame 14 (index 13)
+                    self.background_frame = self.animation_frames[13]
                 if self.current_frame >= len(self.animation_frames):
                     self.current_frame = len(self.animation_frames) - 1
                     self.playing_animation = False
@@ -473,15 +477,21 @@ class MainMenu:
             button.update(event)
 
     def draw(self, screen):
-        # Draw the current animation frame
+
+        if self.current_frame >= 13:
+            if self.background_frame:
+                bg_scaled = pygame.transform.smoothscale(self.background_frame, self.game.scaler.scale(self.background_frame.get_width(),self.background_frame.get_height()))
+                screen.blit(bg_scaled, (0, 0))
+        # Draw the background frame and subsequent animation only after the first animation finishes
         frame = self.animation_frames[self.current_frame]
         screen.blit(frame, (0, 0))
 
-        # Draw image buttons on top
-        for button in self.image_buttons:
-            button.draw(screen)
-        for button in self.text_buttons:
-            button.draw(screen,self.game.font)
+        if self.current_frame >= 13:
+            # Draw image buttons on top
+            for button in self.image_buttons:
+                button.draw(screen)
+            for button in self.text_buttons:
+                button.draw(screen,self.game.font)
 
 class SeedSelect:
     def __init__(self, game, background, banned_plants):
@@ -1223,6 +1233,7 @@ class WelcomeScreen:
             self.alpha = max(0, 255 - int((self.timer / self.fade_duration) * 255))
             if self.timer >= self.fade_duration:
                 preload_all()
+                self.game.plant_icons = preloaded_images['plant_icons']
                 self.phase = 'show_titlescreen'
         elif self.phase == 'show_titlescreen':
             self.title_alpha = min(255, self.title_alpha + dt * 200)  # fade in over ~1.275 seconds
@@ -1231,6 +1242,7 @@ class WelcomeScreen:
             mouse_pos = pygame.mouse.get_pos()
             if pygame.mouse.get_pressed()[0] and self.button_rect.collidepoint(mouse_pos):
                 self.game.state = 'menu'
+                self.game.sound_manager.play_sound("roll_in")
 
 
     def draw(self, screen):
@@ -1254,7 +1266,8 @@ class WelcomeScreen:
             button_surface = self.button.copy()
             button_surface.set_alpha(self.title_alpha)
             screen.blit(button_surface, self.button_rect)
-
+            click_here_text = self.game.small_font.render(self.game.lawn_strings.get("CLICK_TO_START","CLICK TO START!"), True, (255, 255, 255))
+            screen.blit(click_here_text, (game.width // 2 - 100, game.height // 2 + 180))  # Position the coin count text next to the coinbank
 class Menu:
     def __init__(self, game):
         self.game = game
@@ -1435,22 +1448,9 @@ class Game:
         # Scale shovel icon appropriately
         self.shovel_image = pygame.transform.smoothscale(self.shovel_image, (40 * 1.8, 40 * 1.8))
 
-        # Load plant icons
-        self.plant_icons = {
-            'Peashooter': pygame.image.load('animations/Plants/peashooter/Peashooter0080.png'),
-            'Sunflower': pygame.image.load('animations/Plants/sunflower/Sunflower0005.png'),
-            'Cherry Bomb': pygame.image.load('animations/Plants/cherrybomb/Cherrybomb0015.png'),
-            'Wall Nut': pygame.image.load('animations/Plants/wallnut/Wallnut0001.png'),
-            'Potato Mine': pygame.image.load('animations/Plants/potatomine/PotatoMine0021.png'),
-            'Snow Pea': pygame.image.load('animations/Plants/snowpea/SnowPea0080.png'),
-            'Chomper': pygame.image.load('animations/Plants/chomper/Chomper0001.png'),
-            'Repeater': pygame.image.load('animations/Plants/repeater/Repeater0080.png'),
-            'Puff Shroom': pygame.image.load('animations/Plants/puffshroom/PuffShroom0005.png'),
-            'Sun Shroom': pygame.image.load('animations/Plants/sunshroom/SunShroom0005.png'),
-            'Fume Shroom': pygame.image.load('animations/Plants/fumeshroom/FumeShroom0005.png'),
-            'Grave Buster': pygame.image.load('animations/Plants/gravebuster/GraveBuster0001.png'),
-            'Lily Pad': pygame.image.load('animations/Plants/lilypad/LilyPad0001.png'),
-        }
+        # Load plant icons (now preloaded in preloader.py)
+        self.plant_icons = {}
+       
 
         # Load background
         self.load_background()
@@ -1460,7 +1460,7 @@ class Game:
 
         # Font for UI
         self.font = pygame.font.Font('HOUSE_OF_TERROR.ttf', int(self.scaler.scale_y(36)))
-        self.small_font = pygame.font.Font('HOUSE_OF_TERROR.ttf', int(self.scaler.scale_y(24)))
+        self.small_font = pygame.font.Font('BrianneTod.ttf', int(self.scaler.scale_y(24)))
         self.pico_font = pygame.font.Font('pico12.ttf', int(self.scaler.scale_y(20)))
 
         # Load LawnStrings.txt
