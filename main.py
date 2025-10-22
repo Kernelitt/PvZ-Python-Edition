@@ -3,7 +3,7 @@ import random
 import json
 import threading
 import queue
-from simple_framework import SimpleSettingsWindow, SimpleWindowScaler, SimplePygameField, SimplePygameButton, SimpleImageButton
+from simple_framework import  SimpleWindowScaler, SimplePygameButton, SimpleImageButton
 from os import getcwd
 print(getcwd())
 

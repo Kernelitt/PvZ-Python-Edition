@@ -52,14 +52,15 @@ class Plant:
         self.last_action_time = 0
         self.projectiles = []
         self.damage_flash_timer = 0.0
-        self.rect = pygame.Rect(self.x, self.y, 80, 80)
+        self.rect = pygame.Rect(self.x, self.y, 160, 160)
     def update(self, dt):
         self.damage_flash_timer = max(0, self.damage_flash_timer - dt)
 
     def draw(self, screen):
         # Placeholder: draw a rectangle for the plant
-        shadow = preloaded_images["plant_shadow"]
-        screen.blit(shadow,(10,100))
+        shadow = preloaded_images["plant_shadow"] 
+        shadow_scaled = pygame.transform.smoothscale(shadow,(120,60))
+        screen.blit(shadow_scaled,(self.x+30,self.y+110))
 
     def take_damage(self, amount):
         self.health -= amount
@@ -181,7 +182,7 @@ class Peashooter(Plant):
             frame.blit(blink_frame, (0,0))
         elif self.current_action == 'shoot':
             # shoot_bottom is the base, shoot_top overlays on head
-            frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
+            frame = self.animation_frames['shoot_bottom'][6].copy()
             shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
             frame.blit(shoot_top_frame, (0,0))
         if self.damage_flash_timer > 0:
@@ -192,7 +193,7 @@ class Peashooter(Plant):
             frame_alpha = pygame.surfarray.pixels_alpha(frame)
             tint_alpha[:] = frame_alpha
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
-        scaled_frame = pygame.transform.scale(frame, (160, 160))
+        scaled_frame = pygame.transform.smoothscale(frame, (160, 160))
         screen.blit(scaled_frame, (self.x, self.y))
         # Draw projectiles
         for projectile in self.projectiles:
@@ -208,9 +209,14 @@ class Sunflower(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in SUNFLOWER_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'sunflower_{action}']
-        self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
+        for action_name, action_data in SUNFLOWER_ANIMATIONS.items():
+            if isinstance(action_data, dict):  # Проверяем значение (словарь), не ключ
+                key = f'sunflower_{action_name}'
+                if key in preloaded_images:
+                    self.animation_frames[action_name] = preloaded_images[key]
+                else:
+                    print(f"Warning: {key} not found in preloaded_images")
+
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -244,6 +250,7 @@ class Sunflower(Plant):
         super().update(dt)
 
     def draw(self, screen):
+        super().draw(screen) 
         frame = self.animation_frames['idle'][self.idle_frame_index]
         if self.damage_flash_timer > 0:
             frame = frame.copy()
@@ -311,6 +318,7 @@ class CherryBomb(Plant):
         self.game.sound_manager.play_sound('cherrybomb')
 
     def draw(self, screen):
+        super().draw(screen) 
         if self.exploded:
             return
         frame = self.animation_frames['idle'][self.idle_frame_index]
@@ -349,6 +357,7 @@ class WallNut(Plant):
         super().update(dt)
 
     def draw(self, screen):
+        super().draw(screen) 
         frame = self.animation_frames['idle'][self.idle_frame_index]
         if self.damage_flash_timer > 0:
             frame = frame.copy()
@@ -603,6 +612,7 @@ class SnowPea(Plant):
         self.game.sound_manager.play_sound('throw')
 
     def draw(self, screen):
+        super().draw(screen) 
         if self.current_action == 'idle':
             frame = self.animation_frames['idle'][self.idle_frame_index]
         elif self.current_action == 'blink':
@@ -610,7 +620,7 @@ class SnowPea(Plant):
             blink_frame = self.animation_frames['blink'][self.blink_frame_index]
             frame.blit(blink_frame, (0,0))
         elif self.current_action == 'shoot':
-            frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
+            frame = self.animation_frames['shoot_bottom'][6].copy()
             shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
             frame.blit(shoot_top_frame, (0,0))
         if self.damage_flash_timer > 0:
@@ -710,6 +720,7 @@ class Chomper(Plant):
         super().update(dt)
 
     def draw(self, screen):
+        super().draw(screen) 
         if self.current_action == 'idle':
             frame = self.animation_frames['idle'][self.idle_frame_index]
         elif self.current_action == 'attack':
@@ -848,6 +859,7 @@ class Repeater(Plant):
         self.second_shot_timer = 0.3  # 150 ms delay for second shot
 
     def draw(self, screen):
+        super().draw(screen) 
         if self.current_action == 'idle':
             frame = self.animation_frames['idle'][self.idle_frame_index]
         elif self.current_action == 'blink':
@@ -856,7 +868,7 @@ class Repeater(Plant):
             frame.blit(blink_frame, (0,0))
         elif self.current_action == 'shoot':
             # shoot_bottom is the base, shoot_top overlays on head
-            frame = self.animation_frames['shoot_bottom'][self.shoot_bottom_frame_index].copy()
+            frame = self.animation_frames['shoot_bottom'][6].copy()
             shoot_top_frame = self.animation_frames['shoot_top'][self.shoot_frame_index]
             frame.blit(shoot_top_frame, (0,0))
         if self.damage_flash_timer > 0:
@@ -1124,6 +1136,7 @@ class FumeShroom(Plant):
         super().update(dt)
 
     def draw(self, screen):
+        super().draw(screen) 
         frame = self.animation_frames['idle'][self.idle_frame_index]
         if self.damage_flash_timer > 0:
             frame = frame.copy()
@@ -1252,7 +1265,9 @@ class Coin:
         self.game = game
         self.value = 10
         self.collected = False
-        self.animation_frames = preloaded_images['coin_silver']
+        self.animation_frames = {}
+        self.animation_frames = preloaded_images["coin_silver"]
+
         self.current_frame = 0
         self.frame_timer = 0.0
         self.frame_duration = 1.0 / COIN_SILVER_ANIMATIONS['idle']['fps']

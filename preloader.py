@@ -35,6 +35,7 @@ def preload_plant_animations():
         'fume_shroom': ('fume_shroom', FUME_SHROOM_ANIMATIONS),
         'grave_buster': ('grave_buster', GRAVE_BUSTER_ANIMATIONS),
     }
+    
     for key, (anim_type, anims) in plant_data.items():
         # Try atlas first
         title = anim_type.replace("_", " ").title().replace(" ", "")
@@ -44,13 +45,20 @@ def preload_plant_animations():
         sheet_path = atlas_path if os.path.exists(atlas_path) else old_sheet_path
         try:
             sheet = pygame.image.load(sheet_path).convert_alpha()
-            max_end = max(anim['end_frame'] for anim in anims.values())
-            frame_width = sheet.get_width() // max_end
+            # Фильтруем только словари с 'end_frame' для max_end
+            max_end = max(anim['end_frame'] for anim in anims.values() if isinstance(anim, dict) and 'end_frame' in anim)
+            frame_width = anims["frame_width"] if "frame_width" in anims else sheet.get_width() // max_end
             frame_height = sheet.get_height()
             for action in anims:
                 anim = anims[action]
+                # Пропускаем, если anim не словарь (например, 'frame_width' — int)
+                if not isinstance(anim, dict):
+                    continue
                 start_idx = anim['start_frame'] - 1
                 frame_count = anim['end_frame'] - anim['start_frame'] + 1
+                print(anim)
+                print(frame_count)
+                print(frame_width)
                 frames = []
                 for i in range(frame_count):
                     x = (start_idx + i) * frame_width

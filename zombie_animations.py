@@ -102,6 +102,14 @@ PEASHOOTER_ANIMATIONS = {
 }
 
 SUNFLOWER_ANIMATIONS = {
+    'frame_width':160,
+    'blink': {
+        'start_frame': 1,
+        'end_frame': 4,
+        'loop': True,
+        'fps': 12,
+        'sprite_sheet': True
+    },
     'idle': {
         'start_frame': 5,
         'end_frame': 25,
@@ -484,7 +492,7 @@ SQUASH_ANIMATIONS = {
 SUN_ANIMATIONS = {
     'idle': {
         'start_frame': 1,
-        'end_frame': 13,
+        'end_frame': 12,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
@@ -492,6 +500,7 @@ SUN_ANIMATIONS = {
 }
 
 COIN_SILVER_ANIMATIONS = {
+    'frame_width':45,
     'idle': {
         'start_frame': 1,
         'end_frame': 21,
@@ -593,15 +602,16 @@ def get_animation_frames(action, anim_type='zombie'):
     if 'sprite_sheet' in anim and anim['sprite_sheet']:
         # Load sprite sheet and split into frames
         if anim_type == 'coin_silver':
-            sheet_path = f'animations/collectable/Coin_silver.png'
+            sheet_path = f'animations/collectable/atlas_Coin_silver0001.png'
         elif anim_type == 'sun':
-            sheet_path = f'animations/collectable/Sun.png'
+            sheet_path = f'animations/collectable/atlas_Sun0001.png'
         else:
             sheet_path = f'animations/Plants/{anim_type}/{action}.png'  # Adjust path as needed
         try:
             sheet = pygame.image.load(sheet_path)
             frame_count = anim['end_frame'] - anim['start_frame'] + 1
-            frame_width = sheet.get_width() // frame_count
+            # Адаптация: используем frame_width из anims, если есть, иначе вычисляем
+            frame_width = anim["frame_width"] if "frame_width" in anim else sheet.get_width() // frame_count
             frame_height = sheet.get_height()
             frames = []
             for i in range(frame_count):
@@ -612,6 +622,7 @@ def get_animation_frames(action, anim_type='zombie'):
             return []
     else:
         return list(range(anim['start_frame'], anim['end_frame'] + 1))
+
 
 # Example usage:
 # frames = get_animation_frames('walk', 'zombie')  # Returns [46, 47, ..., 92]
