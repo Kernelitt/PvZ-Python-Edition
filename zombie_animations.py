@@ -112,7 +112,7 @@ SUNFLOWER_ANIMATIONS = {
     },
     'idle': {
         'start_frame': 5,
-        'end_frame': 25,
+        'end_frame': 26,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
@@ -137,6 +137,7 @@ CHERRYBOMB_ANIMATIONS = {
 }
 
 WALLNUT_ANIMATIONS = {
+    'frame_width':160,
     'idle': {
         'start_frame': 1,
         'end_frame': 16,
@@ -147,75 +148,78 @@ WALLNUT_ANIMATIONS = {
 }
 
 POTATO_MINE_ANIMATIONS = {
+    'frame_width':180,
     'not_armed': {
         'start_frame': 1,
-        'end_frame': 8,
+        'end_frame': 1,
         'loop': True,
-        'fps': 6,
+        'fps': 4,
         'sprite_sheet': True
     },
     'arming': {
-        'start_frame': 1,
-        'end_frame': 12,
+        'start_frame': 2,
+        'end_frame': 20,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
     },
     'idle': {
-        'start_frame': 1,
-        'end_frame': 12,
+        'start_frame': 21,
+        'end_frame': 31,
+        'loop': True,
+        'fps': 12,
+        'sprite_sheet': True
+    },
+    'blink': { # when idle
+        'start_frame': 33,
+        'end_frame': 35,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
     },
     'explode': {
-        'start_frame': 1,
-        'end_frame': 1,
+        'start_frame': 37,
+        'end_frame': 37,
         'loop': True,
         'fps': 1,
         'sprite_sheet': True
     },
-    'blink': { # when idle
-        'start_frame': 1,
-        'end_frame': 3,
-        'loop': True,
-        'fps': 12,
-        'sprite_sheet': True
-    },
+
 }
 
 SNOW_PEA_ANIMATIONS = {
+    'frame_width':160,
     'idle': {
-        'start_frame': 1,
-        'end_frame': 25,
+        'start_frame': 80,
+        'end_frame': 104,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
     },
     'shoot': {
-        'start_frame': 1,
-        'end_frame': 25,
+        'start_frame': 55,
+        'end_frame': 79,
         'loop': False,
         'fps': 24,
         'sprite_sheet': True
     },
     'shoot_top': {
-        'start_frame': 1,
-        'end_frame': 25,
+        'start_frame': 55,
+        'end_frame': 79,
         'loop': True,
         'fps': 24,
         'sprite_sheet': True
     },
     'shoot_bottom': {
-        'start_frame': 1,
-        'end_frame': 25,
+        'start_frame': 5,
+        'end_frame': 29,
         'loop': True,
         'fps': 24,
         'sprite_sheet': True
     },
     'blink': {
-        'start_frame': 1,
-        'end_frame': 5,
+        'start_frame': 2,
+        'end_frame': 4,
         'loop': False,
         'fps': 24,
         'sprite_sheet': True

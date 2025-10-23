@@ -60,7 +60,7 @@ class Plant:
         # Placeholder: draw a rectangle for the plant
         shadow = preloaded_images["plant_shadow"] 
         shadow_scaled = pygame.transform.smoothscale(shadow,(120,60))
-        screen.blit(shadow_scaled,(self.x+30,self.y+110))
+        screen.blit(shadow_scaled,(self.x+20,self.y+110))
 
     def take_damage(self, amount):
         self.health -= amount
@@ -278,7 +278,7 @@ class CherryBomb(Plant):
         for action in CHERRYBOMB_ANIMATIONS:
             self.animation_frames[action] = preloaded_images[f'cherrybomb_{action}']
         self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
-        self.current_action = 'idle'
+        self.current_action = 'active'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
 
@@ -339,8 +339,13 @@ class WallNut(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in WALLNUT_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'wallnut_{action}']
+        for action_name, action_data in WALLNUT_ANIMATIONS.items():
+            if isinstance(action_data, dict):  # Проверяем значение (словарь), не ключ
+                key = f'wallnut_{action_name}'
+                if key in preloaded_images:
+                    self.animation_frames[action_name] = preloaded_images[key]
+                else:
+                    print(f"Warning: {key} not found in preloaded_images")
         self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
@@ -394,10 +399,14 @@ class PotatoMine(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in POTATO_MINE_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'potato_mine_{action}']
-        self.rect = self.animation_frames['not_armed'][0].get_rect(center=(self.x, self.y))
-
+        for name,action in POTATO_MINE_ANIMATIONS.items():
+            if isinstance(action, dict):  # Проверяем значение (словарь), не ключ
+                key = f'potato_mine_{name}'
+                if key in preloaded_images:
+                    self.animation_frames[name] = preloaded_images[key]
+                else:
+                    print(f"Warning: {key} not found in preloaded_images")
+        print(self.animation_frames)
     def update(self, dt):
         if self.exploded:
             return
@@ -413,9 +422,7 @@ class PotatoMine(Plant):
             # Update not_armed animation
             self.not_armed_timer += dt
             not_armed_fps = POTATO_MINE_ANIMATIONS['not_armed']['fps']
-            if self.not_armed_timer >= 1.0 / not_armed_fps:
-                self.not_armed_timer -= 1.0 / not_armed_fps
-                self.not_armed_frame_index = (self.not_armed_frame_index + 1) % len(self.animation_frames['not_armed'])
+            self.not_armed_frame_index = 0
             # Check if arming should start
             self.timer -= dt
             if self.timer <= 0:
@@ -525,8 +532,13 @@ class SnowPea(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in SNOW_PEA_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'snow_pea_{action}']
+        for action_name, action_data in SNOW_PEA_ANIMATIONS.items():
+            if isinstance(action_data, dict):  # Проверяем значение (словарь), не ключ
+                key = f'snow_pea_{action_name}'
+                if key in preloaded_images:
+                    self.animation_frames[action_name] = preloaded_images[key]
+                else:
+                    print(f"Warning: {key} not found in preloaded_images")
         self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0

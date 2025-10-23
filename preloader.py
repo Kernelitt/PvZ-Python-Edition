@@ -54,8 +54,8 @@ def preload_plant_animations():
                 # Пропускаем, если anim не словарь (например, 'frame_width' — int)
                 if not isinstance(anim, dict):
                     continue
-                start_idx = anim['start_frame'] - 1
-                frame_count = anim['end_frame'] - anim['start_frame'] + 1
+                start_idx = anim['start_frame'] 
+                frame_count = anim['end_frame'] - anim['start_frame'] +1
                 print(anim)
                 print(frame_count)
                 print(frame_width)
