@@ -19,7 +19,7 @@ def preload_zombie_animations():
 
 def preload_plant_animations():
     print("Preloading plant animations...")
-    preloaded_images['plant_shadow'] = pygame.image.load('reanim\pot_shadow.png').convert_alpha()
+    preloaded_images['plant_shadow'] = pygame.image.load('images\plantshadow.png').convert_alpha()
     plant_data = {
         'peashooter': ('peashooter', PEASHOOTER_ANIMATIONS),
         'sunflower': ('sunflower', SUNFLOWER_ANIMATIONS),

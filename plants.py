@@ -7,7 +7,7 @@ from zombie_animations import *
 from preloader import preloaded_images
 
 class Projectile:
-    def __init__(self, x, y, speed, damage, image, angle=0, proj_type='pea', max_distance=0):
+    def __init__(self, x, y, speed, damage, image, angle=0, proj_type='pea', max_distance=0, row=0):
         self.x = x
         self.y = y
         self.start_x = x
@@ -19,6 +19,7 @@ class Projectile:
         self.active = True
         self.proj_type = proj_type
         self.max_distance = max_distance
+        self.row = row
 
     def update(self, dt):
         self.x += self.speed * dt * math.cos(self.angle)
@@ -35,8 +36,8 @@ class Projectile:
         screen.blit(pygame.transform.scale(self.image,(48,48)), self.rect)
 
     def collides_with(self, zombie):
-        # Simple rect collision
-        return self.rect.colliderect(zombie.rect)
+        # Simple x-coordinate collision for optimization
+        return self.x >= zombie.x and self.x <= zombie.x + zombie.rect.width and self.row == zombie.lane
 
 class Plant:
     def __init__(self, x, y, name, game, row):
@@ -49,11 +50,12 @@ class Plant:
         self.health = PLANT_HEALTH.get(name, PLANT_HEALTH.get("Basic Plants", 300))
         self.sun_cost = PLANT_SUN_COST.get(name, 50)
         self.recharge = PLANT_RECHARGE.get(name, 750) * 10 / 1000.0  # convert ms to seconds (multiply by 10 as per comment)
-        self.last_action_time = 0
+        self.action_timer = 0
         self.projectiles = []
         self.damage_flash_timer = 0.0
         self.rect = pygame.Rect(self.x, self.y, 160, 160)
     def update(self, dt):
+        self.action_timer += dt
         self.damage_flash_timer = max(0, self.damage_flash_timer - dt)
 
     def draw(self, screen):
@@ -105,7 +107,6 @@ class Peashooter(Plant):
             if self.idle_timer >= 1.0 / idle_fps:
                 self.idle_timer -= 1.0 / idle_fps
                 self.idle_frame_index = (self.idle_frame_index + 1) % len(self.animation_frames['idle'])
-
         # Check if there is a zombie in the same lane ahead
         has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x)
         if has_target:
@@ -113,21 +114,19 @@ class Peashooter(Plant):
                 self.shoot_delay = random.uniform(1.0, 1.5)
             self.shoot_delay_timer += dt
             if self.shoot_delay_timer >= self.shoot_delay:
-                current_time = time.time()
-                if current_time - self.last_action_time >= self.fire_rate:
+                if self.action_timer >= self.fire_rate:
                     self.current_action = 'shoot'
                     self.shoot_frame_index = 0
                     self.shoot_timer = 0.0
                     self.shoot_bottom_frame_index = self.idle_frame_index
                     self.shooting_second = False
                     self.shoot()
-                    self.last_action_time = current_time
+                    self.action_timer = 0.0
                     self.shoot_delay_timer = 0.0
                     self.shoot_delay = 0.0
         else:
             self.shoot_delay = 0.0
             self.shoot_delay_timer = 0.0
-
         # Random blink
         if self.current_action == 'idle' and self.idle_frame_index == 0 and random.random() < 0.1:  # low chance per frame
             self.current_action = 'blink'
@@ -167,7 +166,7 @@ class Peashooter(Plant):
     def shoot(self):
         proj_x = self.x + 50
         proj_y = self.y + 35
-        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, row=self.row)
         self.projectiles.append(new_proj)
         self.game.sound_manager.play_sound('throw')
 
@@ -567,14 +566,13 @@ class SnowPea(Plant):
                 self.shoot_delay = random.uniform(1.0, 1.5)
             self.shoot_delay_timer += dt
             if self.shoot_delay_timer >= self.shoot_delay:
-                current_time = time.time()
-                if current_time - self.last_action_time >= self.fire_rate:
+                if self.action_timer >= self.fire_rate:
                     self.current_action = 'shoot'
                     self.shoot_frame_index = 0
                     self.shoot_timer = 0.0
                     self.shoot_bottom_frame_index = self.idle_frame_index
                     self.shoot()
-                    self.last_action_time = current_time
+                    self.action_timer = 0.0
                     self.shoot_delay_timer = 0.0
                     self.shoot_delay = 0.0
         else:
@@ -619,7 +617,7 @@ class SnowPea(Plant):
     def shoot(self):
         proj_x = self.x + 50
         proj_y = self.y + 35
-        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='snowpea')
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='snowpea', row=self.row)
         self.projectiles.append(new_proj)
         self.game.sound_manager.play_sound('throw')
 
@@ -802,15 +800,14 @@ class Repeater(Plant):
                 self.shoot_delay = random.uniform(1.0, 1.5)
             self.shoot_delay_timer += dt
             if self.shoot_delay_timer >= self.shoot_delay:
-                current_time = time.time()
-                if current_time - self.last_action_time >= self.fire_rate:
+                if self.action_timer >= self.fire_rate:
                     self.current_action = 'shoot'
                     self.shoot_frame_index = 0
                     self.shoot_timer = 0.0
                     self.shoot_bottom_frame_index = self.idle_frame_index
                     self.shooting_second = False
                     self.shoot()
-                    self.last_action_time = current_time
+                    self.action_timer = 0.0
                     self.shoot_delay_timer = 0.0
                     self.shoot_delay = 0.0
         else:
@@ -851,7 +848,7 @@ class Repeater(Plant):
                 # shoot second
                 proj_x = self.x + 50
                 proj_y = self.y + 35
-                new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image)
+                new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, row=self.row)
                 self.projectiles.append(new_proj)
                 self.game.sound_manager.play_sound('throw')
                 self.shooting_second = False
@@ -935,7 +932,7 @@ class LilyPad(Plant):
             tint_alpha[:] = frame_alpha
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
         scaled_frame = pygame.transform.scale(frame, (160, 160))
-        screen.blit(scaled_frame, (self.x, self.y))
+        screen.blit(scaled_frame, (self.x, self.y+50))
 
 class PuffShroom(Plant):
     def __init__(self, x, y, game, row):
@@ -990,13 +987,12 @@ class PuffShroom(Plant):
         cell_width = self.game.main_game.game_field.cell_width
         has_target = any(z for z in zombies if z.lane == self.row and z.x > self.x and z.x - self.x <= 3 * cell_width)
         if has_target:
-            current_time = time.time()
-            if current_time - self.last_action_time >= self.fire_rate:
+            if self.action_timer >= self.fire_rate:
                 self.current_action = 'shoot'
                 self.shoot_frame_index = 0
                 self.shoot_timer = 0.0
                 self.shoot()
-                self.last_action_time = current_time
+                self.action_timer = 0.0
 
         # Random blink
         if self.current_action == 'idle' and self.idle_frame_index == 0 and random.random() < 0.1:
@@ -1037,7 +1033,7 @@ class PuffShroom(Plant):
         proj_x = self.x + 60
         proj_y = self.y + 100
         max_distance = 3 * self.game.main_game.game_field.cell_width
-        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='puff', max_distance=max_distance)
+        new_proj = Projectile(proj_x, proj_y, self.projectile_speed, self.damage, self.projectile_image, proj_type='puff', max_distance=max_distance, row=self.row)
         self.projectiles.append(new_proj)
         self.game.sound_manager.play_sound('throw')
 

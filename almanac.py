@@ -2,6 +2,7 @@ import pygame
 from simple_framework import SimpleImageButton, SimplePygameButton
 from definitions import PLANT_SUN_COST, ZOMBIE_HEALTH
 from zombie_animations import get_animation_frames
+from preloader import preloaded_images
 
 class Almanac:
     def __init__(self, game):
@@ -144,48 +145,16 @@ class Almanac:
         # Load plants section images
         self.plants_ground = pygame.image.load('images/Almanac_GroundDay.jpg')
         self.plant_card_bg = pygame.image.load('images/Almanac_PlantCard.png')
-        # Plant animations
+        # Plant animations from preloaded
         self.plant_animations = {}
         self.idle_frames = {}
-        import json
-        import os
         for plant in self.plants_list:
-            plant_no_spaces = plant.replace(' ', '')
-            plant_dir = plant_no_spaces.lower()
-            atlas_path = f'animations/Plants/{plant_dir}/atlas_{plant_no_spaces}0001.png'
-            json_path = f'animations/Plants/{plant_dir}/{plant_no_spaces}.json'
-            frames = []
-            if os.path.exists(atlas_path) and os.path.exists(json_path):
-                # Load from atlas
-                with open(json_path) as f:
-                    data = json.load(f)
-                frame_width = data['frame_width']
-                frame_height = data['frame_height']
-                total_frames = data['total_frames']
-                sheet = pygame.image.load(atlas_path).convert_alpha()
-                for i in range(total_frames):
-                    frame = sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
-                    frames.append(frame)
-            else:
-                # Load individual frames
-                i = 1
-                while True:
-                    try:
-                        frame = pygame.image.load(f'animations/Plants/{plant_no_spaces}/{plant_no_spaces}{i:04d}.png')
-                        frames.append(frame)
-                        i += 1
-                    except:
-                        break
+            plant_type = plant.lower().replace(' ', '_')
+            key = f'{plant_type}_idle'
+            frames = preloaded_images.get(key, [])
             if frames:
-                plant_type = plant.lower().replace(' ', '_')
-                idle_frames = get_animation_frames('idle', plant_type)
-                if idle_frames:
-                    self.plant_animations[plant] = ["idle"]
-                    self.idle_frames[plant] = list(range(len(idle_frames)))
-                else:
-                    # Use all frames as idle if no idle animation defined
-                    self.plant_animations[plant] = frames
-                    self.idle_frames[plant] = list(range(len(frames)))
+                self.plant_animations[plant] = frames
+                self.idle_frames[plant] = list(range(len(frames)))
             else:
                 self.plant_animations[plant] = None
                 self.idle_frames[plant] = []
@@ -193,28 +162,16 @@ class Almanac:
         self.animation_timer = 0.0
         self.frame_duration = 0.1
 
-        # Zombie animations
+        # Zombie animations from preloaded
         self.zombie_animations = {}
         self.zombie_idle_frames = {}
         for zombie in self.zombies_list:
-            frames = []
-            i = 1
-            while True:
-                try:
-                    frame = pygame.image.load(f'animations/Zombies/{zombie.lower().replace(" ", "_")}/{zombie.replace(" ", "")}{i:04d}.png')
-                    frames.append(frame)
-                    i += 1
-                except:
-                    break
+            zombie_type = zombie.lower().replace(' ', '_').replace('_health', '')
+            key = f'{zombie_type}_walk'
+            frames = preloaded_images.get(key, [])
             if frames:
                 self.zombie_animations[zombie] = frames
-                zombie_type = zombie.lower().replace(' ', '_').replace('_health', '')
-                idle_frames = get_animation_frames('idle', zombie_type)
-                if not idle_frames:
-                    idle_frames = get_animation_frames('walk', zombie_type)
-                if not idle_frames:
-                    idle_frames = list(range(1, len(frames) + 1))
-                self.zombie_idle_frames[zombie] = idle_frames
+                self.zombie_idle_frames[zombie] = list(range(len(frames)))
             else:
                 self.zombie_animations[zombie] = None
                 self.zombie_idle_frames[zombie] = []
@@ -381,11 +338,8 @@ class Almanac:
             ground_y = self.scaler.scale_y(190)
             self.screen.blit(self.plants_ground, (ground_x, ground_y))
             if self.plant_animations[self.selected_plant]:
-                if self.idle_frames[self.selected_plant]:
-                    frame_index = self.idle_frames[self.selected_plant][self.current_frame] - 1
-                    frame = self.plant_animations[self.selected_plant][frame_index]
-                else:
-                    frame = self.plant_animations[self.selected_plant][self.current_frame]
+                frame_index = self.idle_frames[self.selected_plant][self.current_frame]
+                frame = self.plant_animations[self.selected_plant][frame_index]
                 scaled_frame = pygame.transform.scale(frame, (self.scaler.scale_x(150), self.scaler.scale_y(150)))
                 self.screen.blit(scaled_frame, (ground_x + self.scaler.scale_x(100), ground_y + self.scaler.scale_y(50)))
             # Plant card
@@ -443,11 +397,8 @@ class Almanac:
             ground_y = self.scaler.scale_y(150)
             self.screen.blit(self.plants_ground, (ground_x, ground_y))  # Reuse ground image
             if self.zombie_animations[self.selected_zombie]:
-                if self.zombie_idle_frames[self.selected_zombie]:
-                    frame_index = self.zombie_idle_frames[self.selected_zombie][self.current_frame] - 1
-                    frame = self.zombie_animations[self.selected_zombie][frame_index]
-                else:
-                    frame = self.zombie_animations[self.selected_zombie][self.current_frame]
+                frame_index = self.zombie_idle_frames[self.selected_zombie][self.current_frame]
+                frame = self.zombie_animations[self.selected_zombie][frame_index]
                 scaled_frame = pygame.transform.scale(frame, (self.scaler.scale_x(150), self.scaler.scale_y(150)))
                 self.screen.blit(scaled_frame, (ground_x + self.scaler.scale_x(50), ground_y + self.scaler.scale_y(50)))
             # Zombie card

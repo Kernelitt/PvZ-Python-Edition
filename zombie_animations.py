@@ -4,7 +4,25 @@
 # Adjust the ranges based on your actual frame sequences.
 
 ZOMBIE_ANIMATIONS = {
+    'idle': {
+        'start_frame': 1,
+        'end_frame': 29,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
+    'idle2': {
+        'start_frame': 30,
+        'end_frame': 45,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
     'walk': {
+        'start_frame': 46,
+        'end_frame': 92,
+        'loop': True,
+        'fps': 12  # frames per second for this animation
+    },
+    'walk2': {
         'start_frame': 46,
         'end_frame': 92,
         'loop': True,
@@ -19,6 +37,18 @@ ZOMBIE_ANIMATIONS = {
     'death': {
         'start_frame': 179,
         'end_frame': 217,
+        'loop': False,
+        'fps': 24
+    },
+    'swim': {
+        'start_frame': 251,
+        'end_frame': 292,
+        'loop': True,
+        'fps': 12
+    },
+    'swim_death': {
+        'start_frame': 430,
+        'end_frame': 454,
         'loop': False,
         'fps': 24
     },

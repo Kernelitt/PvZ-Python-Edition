@@ -4,6 +4,7 @@ import json
 import threading
 import queue
 from simple_framework import  SimpleWindowScaler, SimplePygameButton, SimpleImageButton
+from simple_client_server import SimpleClient
 from os import getcwd
 print(getcwd())
 
@@ -190,18 +191,23 @@ class SoundManager:
 
 
 class GameField:
-    def __init__(self, scaler, width, height, game):
+    def __init__(self, scaler, width, height, game, rows, water_rows):
         self.game = game
         self.scaler = scaler
         self.screen_width = width
         self.screen_height = height
-        self.rows = 5
+        self.rows = rows
         self.cols = 9
+        self.water_rows = water_rows
         self.cell_width = self.scaler.scale_x((1770 - 450) / 9)  # Adjusted cell width
-        self.cell_height = self.scaler.scale_y((1025 - 160) / 5)  # Adjusted cell height
+        if self.rows == 6:
+            self.cell_height = self.scaler.scale_y((1080 - 160) / self.rows)  # Stretch for pool/fog levels
+        else:
+            self.cell_height = self.scaler.scale_y((1025 - 160) / self.rows)  # Adjusted cell height based on rows
         self.field_x = self.scaler.scale_x(450)  # Top-left x
         self.field_y = self.scaler.scale_y(160)  # Top-left y
         self.grid = [[None for _ in range(self.cols)] for _ in range(self.rows)]  # Placeholder for plants
+        self.lily_pad_grid = [[None for _ in range(self.cols)] for _ in range(self.rows)]  # Track Lily Pads
         self.plant_classes = {
             'Peashooter': Peashooter,
             'Sunflower': Sunflower,
@@ -225,9 +231,13 @@ class GameField:
                     x = self.field_x + col * self.cell_width
                     y = self.field_y + row * self.cell_height
                     pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
-                # Draw plant if present
+                # Draw Lily Pad if present
+                lily_pad = self.lily_pad_grid[row][col]
+                if lily_pad and hasattr(lily_pad, 'draw'):
+                    lily_pad.draw(screen)
+                # Draw plant if present (skip if it's the Lily Pad to avoid double drawing)
                 plant = self.grid[row][col]
-                if plant:
+                if plant and plant != lily_pad:
                     if hasattr(plant, 'draw'):
                         plant.draw(screen)
                     else:
@@ -245,29 +255,78 @@ class GameField:
                     if self.game.main_game.seed_recharge_timers[selected_plant['name']] > 0:
                         print("Seed is recharging!")
                         return
-                    # Plant in the cell if empty
-                    if self.grid[row][col] is None:
-                        sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
-                        if self.game.main_game.sun_count >= sun_cost:
-                            self.game.main_game.sun_count -= sun_cost
-                            plant_class = self.plant_classes.get(selected_plant['name'])
-                            if plant_class:
-                                x_pos = self.field_x + col * self.cell_width + 5
-                                y_pos = self.field_y + row * self.cell_height + 5
-                                plant = plant_class(x_pos, y_pos, self.game, row)
-                                self.grid[row][col] = plant
-                                self.game.sound_manager.play_sound('plant')
-                                print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                            else:
-                                health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
-                                self.grid[row][col] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
-                                self.game.sound_manager.play_sound('plant')
-                                print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
-                            # Reset recharge timer
-                            self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
-                            self.game.main_game.selected_seed = None
+                    # Check if planting on water row
+                    if row in self.water_rows:
+                        if selected_plant['name'] == 'Lily Pad':
+                            # Plant Lily Pad directly on water
+                            if self.grid[row][col] is None:
+                                sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
+                                if self.game.main_game.sun_count >= sun_cost:
+                                    self.game.main_game.sun_count -= sun_cost
+                                    plant_class = self.plant_classes.get(selected_plant['name'])
+                                    if plant_class:
+                                        x_pos = self.field_x + col * self.cell_width + 5
+                                        y_pos = self.field_y + row * self.cell_height + 5
+                                        plant = plant_class(x_pos, y_pos, self.game, row)
+                                        self.grid[row][col] = plant
+                                        self.lily_pad_grid[row][col] = plant  # Track Lily Pad
+                                        self.game.sound_manager.play_sound('plant')
+                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                    # Reset recharge timer
+                                    self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                                    self.game.main_game.selected_seed = None
+                                else:
+                                    print("Not enough sun!")
+                        elif self.lily_pad_grid[row][col] is not None:
+                            # Plant on Lily Pad
+                            if self.grid[row][col] is None or self.grid[row][col] == self.lily_pad_grid[row][col]:
+                                sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
+                                if self.game.main_game.sun_count >= sun_cost:
+                                    self.game.main_game.sun_count -= sun_cost
+                                    plant_class = self.plant_classes.get(selected_plant['name'])
+                                    if plant_class:
+                                        x_pos = self.field_x + col * self.cell_width + 5
+                                        y_pos = self.field_y + row * self.cell_height + 5
+                                        plant = plant_class(x_pos, y_pos, self.game, row)
+                                        self.grid[row][col] = plant
+                                        self.game.sound_manager.play_sound('plant')
+                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                    else:
+                                        health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
+                                        self.grid[row][col] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
+                                        self.game.sound_manager.play_sound('plant')
+                                        print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                    # Reset recharge timer
+                                    self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                                    self.game.main_game.selected_seed = None
+                                else:
+                                    print("Not enough sun!")
                         else:
-                            print("Not enough sun!")
+                            print("Cannot plant on water without Lily Pad!")
+                    else:
+                        # Plant on land
+                        if self.grid[row][col] is None:
+                            sun_cost = PLANT_SUN_COST.get(selected_plant['name'], 0)
+                            if self.game.main_game.sun_count >= sun_cost:
+                                self.game.main_game.sun_count -= sun_cost
+                                plant_class = self.plant_classes.get(selected_plant['name'])
+                                if plant_class:
+                                    x_pos = self.field_x + col * self.cell_width + 5
+                                    y_pos = self.field_y + row * self.cell_height + 5
+                                    plant = plant_class(x_pos, y_pos, self.game, row)
+                                    self.grid[row][col] = plant
+                                    self.game.sound_manager.play_sound('plant')
+                                    print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                else:
+                                    health = PLANT_HEALTH.get(selected_plant['name'], PLANT_HEALTH.get('Basic Plants', 300))
+                                    self.grid[row][col] = {'name': selected_plant['name'], 'color': selected_plant.get('color', (255,0,0)), 'health': health}
+                                    self.game.sound_manager.play_sound('plant')
+                                    print(f"Planted {selected_plant['name']} at cell ({row}, {col})")
+                                # Reset recharge timer
+                                self.game.main_game.seed_recharge_timers[selected_plant['name']] = PLANT_RECHARGE[selected_plant['name']] / 100
+                                self.game.main_game.selected_seed = None
+                            else:
+                                print("Not enough sun!")
                 else:
                     print(f"Clicked on cell ({row}, {col}) - No plant selected")
 
@@ -278,8 +337,16 @@ class GameField:
             row = (y - self.field_y) // self.cell_height
             if 0 <= row < self.rows and 0 <= col < self.cols:
                 if self.grid[row][col] is not None:
+                    plant = self.grid[row][col]
+                    if isinstance(plant, dict):
+                        print(f"Removed {plant['name']} from cell ({row}, {col})")
+                    else:
+                        print(f"Removed {plant.name} from cell ({row}, {col})")
                     self.grid[row][col] = None
-                    print(f"Removed plant at cell ({row}, {col})")
+                    # If removing Lily Pad, clear lily_pad_grid
+                    if self.lily_pad_grid[row][col] is not None:
+                        self.lily_pad_grid[row][col] = None
+                    self.game.sound_manager.play_sound('plant2')
 
 class MainMenu:
     def __init__(self, game):
@@ -590,8 +657,8 @@ class SeedSelect:
             # Draw plant icon on top
             if seed_name in self.game.plant_icons:
                 icon = self.game.plant_icons[seed_name]
-                scaled_icon = pygame.transform.smoothscale(icon, (int(seed_w * 0.8), int(seed_h * 0.6)))
-                icon_rect = scaled_icon.get_rect(center=rect.center)
+                scaled_icon = pygame.transform.smoothscale(icon, (int(seed_w * 0.9), int(seed_h * 0.7)))
+                icon_rect = scaled_icon.get_rect(center=(rect.centerx,rect.centery-10))
                 screen.blit(scaled_icon, icon_rect)
             # Draw white border to indicate selected
             pygame.draw.rect(screen, (255, 255, 255), rect, 3)
@@ -639,7 +706,7 @@ class SeedSelect:
                 plant_name = self.all_plants[i]
                 if plant_name in self.game.plant_icons:
                     icon = self.game.plant_icons[plant_name]
-                    scaled_icon = pygame.transform.smoothscale(icon, (int(button.size[0] * 0.8), int(button.size[1] * 0.6)))
+                    scaled_icon = pygame.transform.smoothscale(icon, (int(button.size[0] * 0.9), int(button.size[1] * 0.7)))
                     icon_rect = scaled_icon.get_rect(center=(button.position[0] + button.size[0] // 2, button.position[1] + button.size[1] // 2))
                     screen.blit(scaled_icon, icon_rect)
                 # Draw border if selected
@@ -701,26 +768,27 @@ class PauseMenu:
         button_width = 200
         button_height = 50
         self.resume_button = SimplePygameButton(
-            (self.center_x - button_width // 2, self.center_y),
+            (self.center_x - button_width // 2, self.center_y + 60),
             (button_width, button_height),
             [("Resume", (50, 15))],
             self.resume_game,
             (0, 128, 0)
         )
         self.restart_button = SimplePygameButton(
-            (self.center_x - button_width // 2, self.center_y + 60),
+            (self.center_x - button_width // 2, self.center_y + 120),
             (button_width, button_height),
             [("Restart Level", (30, 15))],
             self.restart_level,
             (128, 128, 0)
         ) if self.previous_state == 'game' else None
         self.exit_button = SimplePygameButton(
-            (self.center_x - button_width // 2, self.center_y + 120 if self.restart_button else self.center_y + 60),
+            (self.center_x - button_width // 2, self.center_y + 180 if self.restart_button else self.center_y + 120),
             (button_width, button_height),
             [("Exit to Menu", (30, 15))],
             self.exit_to_menu,
             (128, 0, 0)
         )
+        self.multiplayer_status = ""
 
     def resume_game(self):
         self.game.state = self.previous_state
@@ -789,6 +857,14 @@ class MainGame:
         else:
             self.music = 'X-10'
 
+        # Determine rows and water rows based on background
+        if self.level_data['background'] in ['background3.png', 'background4.png']:
+            self.rows = 6
+            self.water_rows = [2, 3]
+        else:
+            self.rows = 5
+            self.water_rows = []
+
         self.zombies_on_level = self.level_data['zombies']
 
         # Use level-specific wave options if present and complete, else global
@@ -797,7 +873,7 @@ class MainGame:
         else:
             self.wave_options = WAVE_OPTIONS
 
-        self.game_field = GameField(game.scaler, game.width, game.height, game)
+        self.game_field = GameField(game.scaler, game.width, game.height, game, self.rows, self.water_rows)
         self.sun_count = self.level_data['start_sun']
         self.coin_count = self.game.user['coins']
         self.coins = []
@@ -823,79 +899,18 @@ class MainGame:
         self.seed_recharge_timers = {plant: 0 for plant in PLANT_RECHARGE}
         self.selected_shovel = False
 
-    def draw_hotbar(self, screen):
-        # Draw hotbar background image
-        scaled_seedbank = pygame.transform.smoothscale(self.game.seedbank_image, (self.game.scaler.scale_x(self.game.seedbank_image.get_width()), self.game.scaler.scale_y(self.game.seedbank_image.get_height())))
-        screen.blit(scaled_seedbank, (0, 0))
-        # Draw sun count
-        sun_text = self.game.small_font.render(f"{self.sun_count}", True, "#000000")
-        screen.blit(sun_text, (self.game.scaler.scale_x(30 * 2), self.game.scaler.scale_y(65 * 2)))
-
-        # Draw coin count
-        coin_text = self.game.small_font.render(f"{self.coin_count}", True, "#000000")
-        screen.blit(coin_text, (self.game.scaler.scale_x(30 * 2), self.game.scaler.scale_y(85 * 2)))
-
-        # Draw seed packets
-        seed_x_start = self.game.scaler.scale_x(80 * 2)
-        seed_y = self.game.scaler.scale_y(8 * 2)
-        seed_w = self.game.scaler.scale_x(45 * 2)
-        seed_h = self.game.scaler.scale_y(65 * 2)
-        offset = self.game.scaler.scale_x(5 * 2)
-
-        mouse_pos = pygame.mouse.get_pos()
-
-        for i, seed in enumerate(self.game.seed_packets):
-            rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
-            # Draw seed packet background
-            scaled_seed = pygame.transform.smoothscale(self.game.seed_image, (seed_w, seed_h))
-            screen.blit(scaled_seed, rect)
-            # Draw plant icon on top
-            icon = seed['icon']
-            scaled_icon = pygame.transform.smoothscale(icon, (int(seed_w * 1), int(seed_h * 0.7)))
-            icon_rect = scaled_icon.get_rect(center=rect.center)
-            screen.blit(scaled_icon, icon_rect)
-            # Highlight selected seed
-            if self.selected_seed == i:
-                pygame.draw.rect(screen, "#FFFFFF", rect, 3)
-            else:
-                pygame.draw.rect(screen, (0, 0, 0), rect, 3)
-            # Draw plant cost below the seed packet
-            cost = PLANT_SUN_COST.get(seed['name'], 0)
-            cost_text = self.game.small_font.render(str(cost), True, (0, 0, 0))
-            cost_rect = cost_text.get_rect(center=(rect.x + seed_w // 2, rect.y + seed_h -10))
-            screen.blit(cost_text, cost_rect)
-
-            # Draw recharge progress bar if recharging
-            if self.seed_recharge_timers[seed['name']] > 0:
-                recharge_time = PLANT_RECHARGE[seed['name']] / 100
-                progress = self.seed_recharge_timers[seed['name']] / recharge_time
-                bar_height = int(seed_h * progress)
-                bar_rect = pygame.Rect(rect.x, rect.y + seed_h - bar_height, seed_w, bar_height)
-                pygame.draw.rect(screen, (128, 128, 128, 128), bar_rect)  # Semi-transparent gray bar from bottom
-
-            # Draw seed name only on hover
-            if rect.collidepoint(mouse_pos):
-                localized_name = self.game.lawn_strings.get(seed['name'].upper().replace(' ', '_'), seed['name'])
-                name_text = self.game.pico_font.render(localized_name, True, (0, 0, 0))
-                text_width, text_height = name_text.get_size()
-                bg_rect = pygame.Rect(rect.x, rect.y + seed_h + self.game.scaler.scale_y(5 * 2), text_width + 10, text_height + 10)
-                pygame.draw.rect(screen, (255, 255, 200), bg_rect)
-                screen.blit(name_text, (rect.x + 5, rect.y + seed_h + self.game.scaler.scale_y(5 * 2) + 5))
-
-        # Draw shovel
-        shovel_x = seed_x_start + len(self.game.seed_packets) * (seed_w + offset) + 50
-        shovel_rect = pygame.Rect(shovel_x, seed_y, 140, 144)
-        scaled_shovel_bank = pygame.transform.smoothscale(self.game.shovel_bank_image, (140, 144))
-        screen.blit(scaled_shovel_bank, shovel_rect)
-        scaled_shovel_icon = pygame.transform.smoothscale(self.game.shovel_image, (120, 120))
-        icon_rect = scaled_shovel_icon.get_rect(center=shovel_rect.center)
-        screen.blit(scaled_shovel_icon, icon_rect)
-        if self.selected_shovel:
-            pygame.draw.rect(screen, "#FFFFFF", shovel_rect, 4)
+### Update ################################################################################################
+    def toggle_game_speed(self):
+        if self.game.speedhack == 1:
+            self.game.speedhack = 2
         else:
-            pygame.draw.rect(screen, (0, 0, 0), shovel_rect, 4)
+            self.game.speedhack = 1
+        print("Speed toggled to", self.game.speedhack)
 
     def update(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                self.toggle_game_speed()
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 mouse_x, mouse_y = event.pos
@@ -923,32 +938,6 @@ class MainGame:
                         self.selected_seed = None
                         print("Selected shovel")
                 else:
-                    # Check if clicked on any suns to collect
-                    for row in range(self.game_field.rows):
-                        for col in range(self.game_field.cols):
-                            plant = self.game_field.grid[row][col]
-                            if plant and hasattr(plant, 'suns'):
-                                for sun in plant.suns:
-                                    if sun.rect.collidepoint(event.pos) and not sun.collected:
-                                        sun.collect()
-                                        break
-                    # Check sky suns
-                    for sun in self.sky_suns:
-                        if sun.rect.collidepoint(event.pos) and not sun.collected:
-                            sun.collect()
-                            break
-                    # Check coins
-                    for coin in self.coins:
-                        if coin.rect.collidepoint(event.pos) and not coin.collected:
-                            coin.collect()
-                            self.coin_count += coin.value
-                            self.game.user['coins'] = self.coin_count
-                            user_data = self.game.user.copy()
-                            user_data['completed_levels'] = list(user_data['completed_levels'])
-                            with open('user.json', 'w') as f:
-                                json.dump(user_data, f)
-                            break
-                    # Plant on game field
                     if self.selected_seed is not None:
                         plant = self.game.seed_packets[self.selected_seed]
                         self.game_field.handle_click(event.pos, plant)
@@ -956,6 +945,34 @@ class MainGame:
                         self.game_field.remove_plant(event.pos)
                         self.game.sound_manager.play_sound('plant1') if random.random() > 0.5 else self.game.sound_manager.play_sound('plant2')
                         self.selected_shovel = False
+
+                # Check if clicked on any suns to collect
+                for row in range(self.game_field.rows):
+                    for col in range(self.game_field.cols):
+                        plant = self.game_field.grid[row][col]
+                        if plant and hasattr(plant, 'suns'):
+                            for sun in plant.suns:
+                                if sun.rect.collidepoint(event.pos) and not sun.collected:
+                                    sun.collect()
+                                    break
+                # Check sky suns
+                for sun in self.sky_suns:
+                    if sun.rect.collidepoint(event.pos) and not sun.collected:
+                        sun.collect()
+                        break
+                # Check coins
+                for coin in self.coins:
+                    if coin.rect.collidepoint(event.pos) and not coin.collected:
+                        coin.collect()
+                        self.coin_count += coin.value
+                        self.game.user['coins'] = self.coin_count
+                        user_data = self.game.user.copy()
+                        user_data['completed_levels'] = list(user_data['completed_levels'])
+                        with open('user.json', 'w') as f:
+                            json.dump(user_data, f)
+                        break
+
+
             elif event.button == 3:
                 self.selected_seed = None
                 self.selected_shovel = False
@@ -1084,7 +1101,8 @@ class MainGame:
             self.game.user['completed_levels'].add(self.game.selected_level)
             # Reward: unlock Sunflower if not already unlocked
             if self.level_data["unlocked_plants"] not in self.game.user['unlocked_plants']:
-                self.game.user['unlocked_plants'].append(self.level_data["unlocked_plants"][0])
+                if self.level_data["unlocked_plants"][0] != None:
+                    self.game.user['unlocked_plants'].append(self.level_data["unlocked_plants"][0])
             # Save to user.json
             with open('user.json', 'w') as f:
                 json.dump({'completed_levels': list(self.game.user['completed_levels']), 'unlocked_plants': self.game.user['unlocked_plants']}, f)   
@@ -1135,6 +1153,80 @@ class MainGame:
         if self.wave_number == 1:
             self.game.sound_manager.play_sound('zombies_are_coming')
 
+
+### Draw ################################################################################################
+    def draw_hotbar(self, screen):
+        # Draw hotbar background image
+        scaled_seedbank = pygame.transform.smoothscale(self.game.seedbank_image, (self.game.scaler.scale_x(self.game.seedbank_image.get_width()), self.game.scaler.scale_y(self.game.seedbank_image.get_height())))
+        screen.blit(scaled_seedbank, (0, 0))
+        # Draw sun count
+        sun_text = self.game.small_font.render(f"{self.sun_count}", True, "#000000")
+        screen.blit(sun_text, (self.game.scaler.scale_x(30 * 2), self.game.scaler.scale_y(65 * 2)))
+
+        # Draw coin count
+        coin_text = self.game.small_font.render(f"{self.coin_count}", True, "#000000")
+        screen.blit(coin_text, (self.game.scaler.scale_x(30 * 2), self.game.scaler.scale_y(85 * 2)))
+
+        # Draw seed packets
+        seed_x_start = self.game.scaler.scale_x(80 * 2)
+        seed_y = self.game.scaler.scale_y(8 * 2)
+        seed_w = self.game.scaler.scale_x(45 * 2)
+        seed_h = self.game.scaler.scale_y(65 * 2)
+        offset = self.game.scaler.scale_x(5 * 2)
+
+        mouse_pos = pygame.mouse.get_pos()
+
+        for i, seed in enumerate(self.game.seed_packets):
+            rect = pygame.Rect(seed_x_start + i * (seed_w + offset), seed_y, seed_w, seed_h)
+            # Draw seed packet background
+            scaled_seed = pygame.transform.smoothscale(self.game.seed_image, (seed_w, seed_h))
+            screen.blit(scaled_seed, rect)
+            # Draw plant icon on top
+            icon = seed['icon']
+            scaled_icon = pygame.transform.smoothscale(icon, (int(seed_w * 1), int(seed_h * 0.7)))
+            icon_rect = scaled_icon.get_rect(center=rect.center)
+            screen.blit(scaled_icon, icon_rect)
+            # Highlight selected seed
+            if self.selected_seed == i:
+                pygame.draw.rect(screen, "#FFFFFF", rect, 3)
+            else:
+                pygame.draw.rect(screen, (0, 0, 0), rect, 3)
+            # Draw plant cost below the seed packet
+            cost = PLANT_SUN_COST.get(seed['name'], 0)
+            cost_text = self.game.small_font.render(str(cost), True, (0, 0, 0))
+            cost_rect = cost_text.get_rect(center=(rect.x + seed_w // 2, rect.y + seed_h -10))
+            screen.blit(cost_text, cost_rect)
+
+            # Draw recharge progress bar if recharging
+            if self.seed_recharge_timers[seed['name']] > 0:
+                recharge_time = PLANT_RECHARGE[seed['name']] / 100
+                progress = self.seed_recharge_timers[seed['name']] / recharge_time
+                bar_height = int(seed_h * progress)
+                bar_rect = pygame.Rect(rect.x, rect.y + seed_h - bar_height, seed_w, bar_height)
+                pygame.draw.rect(screen, (128, 128, 128, 128), bar_rect)  # Semi-transparent gray bar from bottom
+
+            # Draw seed name only on hover
+            if rect.collidepoint(mouse_pos):
+                localized_name = self.game.lawn_strings.get(seed['name'].upper().replace(' ', '_'), seed['name'])
+                name_text = self.game.pico_font.render(localized_name, True, (0, 0, 0))
+                text_width, text_height = name_text.get_size()
+                bg_rect = pygame.Rect(rect.x, rect.y + seed_h + self.game.scaler.scale_y(5 * 2), text_width + 10, text_height + 10)
+                pygame.draw.rect(screen, (255, 255, 200), bg_rect)
+                screen.blit(name_text, (rect.x + 5, rect.y + seed_h + self.game.scaler.scale_y(5 * 2) + 5))
+
+        # Draw shovel
+        shovel_x = seed_x_start + len(self.game.seed_packets) * (seed_w + offset) + 50
+        shovel_rect = pygame.Rect(shovel_x, seed_y, 140, 144)
+        scaled_shovel_bank = pygame.transform.smoothscale(self.game.shovel_bank_image, (140, 144))
+        screen.blit(scaled_shovel_bank, shovel_rect)
+        scaled_shovel_icon = pygame.transform.smoothscale(self.game.shovel_image, (120, 120))
+        icon_rect = scaled_shovel_icon.get_rect(center=shovel_rect.center)
+        screen.blit(scaled_shovel_icon, icon_rect)
+        if self.selected_shovel:
+            pygame.draw.rect(screen, "#FFFFFF", shovel_rect, 4)
+        else:
+            pygame.draw.rect(screen, (0, 0, 0), shovel_rect, 4)
+
     def draw_flag_meter(self, screen):
         frame_width = self.game.flag_meter_image.get_width()
         frame_height = self.game.flag_meter_image.get_height() // 2
@@ -1158,6 +1250,9 @@ class MainGame:
         # Create a filled bar subsurface with width = fill_width
         filled_subsurface = filled_scaled.subsurface((0, 0, fill_width, bar_height))
         screen.blit(filled_subsurface, (x, y))
+
+        screen.blit(self.game.font.render(self.level_data["name"], True, "#000000"), (self.game.scaler.scale_x(1722 - len(self.level_data["name"])*18), self.game.scaler.scale_y(1032)))
+        screen.blit(self.game.font.render(self.level_data["name"], True, "#FFAE00"), (self.game.scaler.scale_x(1720 - len(self.level_data["name"])*18), self.game.scaler.scale_y(1030)))
 
     def draw(self, screen):
         # Optimize background rendering by blitting only the visible part
@@ -1201,6 +1296,8 @@ class MainGame:
             mouse_pos = pygame.mouse.get_pos()
             cursor_shovel = pygame.transform.smoothscale(self.game.shovel_image, (40, 40))
             screen.blit(cursor_shovel, (mouse_pos[0] - cursor_shovel.get_width() // 2, mouse_pos[1] - cursor_shovel.get_height() // 2))
+        # Draw speed indicator
+        screen.blit(self.game.small_font.render(f"Speed: {self.game.speedhack}x", True, (255, 255, 255)), (self.game.scaler.scale_x(10), self.game.scaler.scale_y(210)))
         if self.debug_mode:
             # draw wave and points
             wave_text = self.game.small_font.render(f"Wave: {self.wave_number} Points: {self.wave_points}", True, (255, 255, 255))
@@ -1353,6 +1450,8 @@ class Menu:
             self.level_buttons.append(button)
         self.close_rect = pygame.Rect(10, 1020, 178, 52)
         self.close_hovered = False
+        self.keyboard_navigation = False
+        self.selected_button_index = 0
 
     def handle_events(self, events):
         for event in events:
@@ -1361,6 +1460,42 @@ class Menu:
                 for button in self.level_buttons:
                     button['hovered'] = button['rect'].collidepoint(mouse_pos)
                 self.close_hovered = self.close_rect.collidepoint(mouse_pos)
+                self.keyboard_navigation = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.keyboard_navigation = True
+                    self.selected_button_index = max(0, self.selected_button_index - 8)
+                elif event.key == pygame.K_DOWN:
+                    self.keyboard_navigation = True
+                    self.selected_button_index = min(len(self.level_buttons) - 1, self.selected_button_index + 8)
+                elif event.key == pygame.K_LEFT:
+                    self.keyboard_navigation = True
+                    self.selected_button_index = max(0, self.selected_button_index - 1)
+                elif event.key == pygame.K_RIGHT:
+                    self.keyboard_navigation = True
+                    self.selected_button_index = min(len(self.level_buttons) - 1, self.selected_button_index + 1)
+                elif event.key == pygame.K_RETURN:
+                    if self.selected_button_index < len(self.level_buttons):
+                        button = self.level_buttons[self.selected_button_index]
+                        if button['unlocked']:
+                            self.game.selected_level = button['level']
+                            self.game.current_menu_type = self.menu_type
+                            self.game.load_background()
+                            level_data = self.game.levels[self.game.current_menu_type][self.game.selected_level]
+                            if 'preselected_plants' in level_data:
+                                self.game.seed_packets = [{'name': plant, 'icon': self.game.plant_icons.get(plant, self.game.seed_image)} for plant in level_data['preselected_plants']]
+                                self.game.main_game = MainGame(self.game, self.game.selected_level)
+                                self.game.pre_animation_delay = 1.0
+                                self.game.pending_state = 'game'
+                                self.game.target_offset_pending = -250 * self.game.bg_scale_factor
+                                self.game.start_animation(-1080 * self.game.bg_scale_factor)
+                            else:
+                                self.game.seed_select = SeedSelect(self.game, level_data['background'], level_data['banned_plants'])
+                                self.game.state = 'seed_select'
+                                self.game.post_animation_delay = 1.0
+                                self.game.start_animation(-1080 * self.game.bg_scale_factor)
+                elif event.key == pygame.K_ESCAPE:
+                    self.game.state = 'menu'
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     for button in self.level_buttons:
@@ -1388,8 +1523,11 @@ class Menu:
 
     def draw(self, screen):
         screen.blit(self.background, (0,0))
-        for button in self.level_buttons:
-            img = self.window_highlight if button['hovered'] else self.window_image
+        for i, button in enumerate(self.level_buttons):
+            if self.keyboard_navigation and i == self.selected_button_index:
+                img = self.window_highlight
+            else:
+                img = self.window_highlight if button['hovered'] else self.window_image
             screen.blit(img, button['rect'])
             # blit icon
             icon_x = button['rect'].x + (button['rect'].width - self.thumbnail_width) // 2
@@ -1549,6 +1687,7 @@ class Game:
         self.update_thread = None
         self.thread_running = True
 
+        self.speedhack = 1
 
     def load_background(self):
         background_image = pygame.image.load("images/"+self.levels[self.current_menu_type][self.selected_level]['background'])
@@ -1581,7 +1720,7 @@ class Game:
         clock = pygame.time.Clock()
         running = True
         while running:
-            dt = clock.tick(60) / 1000.0
+            dt = clock.tick(60) / 1000.0 * self.speedhack
             self.fps = clock.get_fps()
 
             # Handle pre-animation delay
@@ -1628,6 +1767,9 @@ class Game:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F3:
                         self.main_game.debug_mode = not self.main_game.debug_mode
+                    elif event.key == pygame.K_SPACE:
+                        if self.state == 'game':
+                            self.main_game.toggle_game_speed()
                     elif event.key == pygame.K_ESCAPE:
                         if self.state in ['game', 'seed_select']:
                             self.pause_menu = PauseMenu(self, self.state)
@@ -1704,6 +1846,7 @@ class Game:
                     self.welcome_screen.draw(self.screen)
                 elif self.state == 'level_menu':
                     self.menu.draw(self.screen)
+
             pygame.display.flip()
             if self.state == 'game':
                 self.sound_manager.play_music(self.main_game.music)
@@ -1713,7 +1856,7 @@ class Game:
     def update_loop(self):
         clock = pygame.time.Clock()
         while self.thread_running:
-            dt = clock.tick(60) / 1000.0
+            dt = clock.tick(60) / 1000.0 * self.speedhack
             with self.update_lock:
                 self.main_game.update_wave(dt)
 
