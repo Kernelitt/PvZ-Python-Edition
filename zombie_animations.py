@@ -258,37 +258,38 @@ CHOMPER_ANIMATIONS = {
 }
 
 REPEATER_ANIMATIONS = {
+    'frame_width':160,
     'idle': {
-        'start_frame': 1,
-        'end_frame': 25,
+        'start_frame': 80,
+        'end_frame': 104,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
     },
     'shoot': {
-        'start_frame': 1,
-        'end_frame': 50,
+        'start_frame': 55,
+        'end_frame': 79,
         'loop': False,
         'fps': 24,
         'sprite_sheet': True
     },
     'shoot_top': {
-        'start_frame': 1,
-        'end_frame': 50,
+        'start_frame': 55,
+        'end_frame': 79,
         'loop': True,
         'fps': 24,
         'sprite_sheet': True
     },
     'shoot_bottom': {
-        'start_frame': 1,
-        'end_frame': 25,
+        'start_frame': 5,
+        'end_frame': 29,
         'loop': True,
         'fps': 24,
         'sprite_sheet': True
     },
     'blink': {
-        'start_frame': 1,
-        'end_frame': 5,
+        'start_frame': 2,
+        'end_frame': 4,
         'loop': False,
         'fps': 24,
         'sprite_sheet': True
@@ -296,6 +297,7 @@ REPEATER_ANIMATIONS = {
 }
 
 PUFFSHROOM_ANIMATIONS = {
+    'frame_width':80,
     'blink': {
         'start_frame': 1,
         'end_frame': 4,
@@ -304,22 +306,22 @@ PUFFSHROOM_ANIMATIONS = {
         'sprite_sheet': True
     },
     'idle': {
-        'start_frame': 1,
-        'end_frame': 17,
+        'start_frame': 5,
+        'end_frame': 21,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
     },
     'shoot': {
-        'start_frame': 1,
-        'end_frame': 13,
+        'start_frame': 22,
+        'end_frame': 34,
         'loop': False,
         'fps': 24,
         'sprite_sheet': True
     },
     'sleep': {
-        'start_frame': 1,
-        'end_frame': 17,
+        'start_frame': 35,
+        'end_frame': 51,
         'loop': True,
         'fps': 12,
         'sprite_sheet': True
@@ -507,7 +509,7 @@ COIN_SILVER_ANIMATIONS = {
     'frame_width':45,
     'idle': {
         'start_frame': 1,
-        'end_frame': 21,
+        'end_frame': 20,
         'loop': True,
         'fps': 24,
         'sprite_sheet': True
@@ -613,7 +615,7 @@ def get_animation_frames(action, anim_type='zombie'):
             sheet_path = f'animations/Plants/{anim_type}/{action}.png'  # Adjust path as needed
         try:
             sheet = pygame.image.load(sheet_path)
-            frame_count = anim['end_frame'] - anim['start_frame'] + 1
+            frame_count = anim['end_frame'] - anim['start_frame'] +1
             # Адаптация: используем frame_width из anims, если есть, иначе вычисляем
             frame_width = anim["frame_width"] if "frame_width" in anim else sheet.get_width() // frame_count
             frame_height = sheet.get_height()

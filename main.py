@@ -221,9 +221,10 @@ class GameField:
     def draw(self, screen):
         for row in range(self.rows):
             for col in range(self.cols):
-                x = self.field_x + col * self.cell_width
-                y = self.field_y + row * self.cell_height
-                pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
+                if self.game.main_game.debug_mode:
+                    x = self.field_x + col * self.cell_width
+                    y = self.field_y + row * self.cell_height
+                    pygame.draw.rect(screen, (0, 255, 0), (x, y, self.cell_width, self.cell_height), 2)  # Green border
                 # Draw plant if present
                 plant = self.grid[row][col]
                 if plant:
@@ -412,13 +413,16 @@ class MainMenu:
         self.game.state = 'level_menu'
 
     def open_minigames(self):
-        print("Mini-Games...")
+        self.game.menu = Menu(game=self.game, menu_type='minigames')
+        self.game.state = 'level_menu'
 
     def open_puzzle(self):
-        print("Puzzle...")
+        self.game.menu = Menu(game=self.game, menu_type='puzzles')
+        self.game.state = 'level_menu'
 
     def open_survival(self):
-        print("Survival...")
+        self.game.menu = Menu(game=self.game, menu_type='survival')
+        self.game.state = 'level_menu'
 
     def open_almanac(self):
         # Import Almanac class here to avoid circular imports if any
@@ -445,7 +449,10 @@ class MainMenu:
         exit()
 
     def complete_all(self):
-        self.game.user['completed_levels'] = set(self.game.levels.keys())
+        all_levels = []
+        for category in self.game.levels.values():
+            all_levels.extend(category.keys())
+        self.game.user['completed_levels'] = set(all_levels)
         self.game.user['unlocked_plants'] = list(PLANT_SUN_COST.keys())
         with open('user.json', 'w') as f:
             json.dump({'completed_levels': list(self.game.user['completed_levels']), 'unlocked_plants': self.game.user['unlocked_plants']}, f)
@@ -762,7 +769,7 @@ class PauseMenu:
 class MainGame:
     def __init__(self, game, level_name):
         self.game = game
-        self.level_data = game.levels[level_name]
+        self.level_data = game.levels[game.current_menu_type][level_name]
         print(self.level_data['background'])
         if self.level_data['background'] in ['background2.png', 'background4.png', 'background6.png']:
             self.is_day = False
@@ -783,6 +790,12 @@ class MainGame:
             self.music = 'X-10'
 
         self.zombies_on_level = self.level_data['zombies']
+
+        # Use level-specific wave options if present and complete, else global
+        if 'wave_options' in self.level_data and isinstance(self.level_data['wave_options'], dict) and 'Every' in self.level_data['wave_options'] and 'Points' in self.level_data['wave_options']:
+            self.wave_options = self.level_data['wave_options']
+        else:
+            self.wave_options = WAVE_OPTIONS
 
         self.game_field = GameField(game.scaler, game.width, game.height, game)
         self.sun_count = self.level_data['start_sun']
@@ -1049,8 +1062,9 @@ class MainGame:
         # Spawn coins on zombie death
         for zombie in self.zombies:
             if zombie.health <= 0 and getattr(zombie, 'to_remove', False):
-                coin = Coin(zombie.x, zombie.y, self.game)
-                self.coins.append(coin)
+                if random.random() < 0.1:
+                    coin = Coin(zombie.x, zombie.y, self.game)
+                    self.coins.append(coin)
 
         # Remove zombies that are off screen or dead
         self.zombies = [z for z in self.zombies if z.x > -50 and (z.health > 0 or not getattr(z, 'to_remove', False))]
@@ -1084,7 +1098,7 @@ class MainGame:
 
     def start_wave(self):
         # Calculate wave points based on wave number
-        self.wave_points = WAVE_OPTIONS["Points"] + ((self.wave_number - 1) // WAVE_OPTIONS["Every"]) * WAVE_OPTIONS["Points"]
+        self.wave_points = self.wave_options["Points"] + ((self.wave_number - 1) // self.wave_options["Every"]) * self.wave_options["Points"]
         self.initial_wave_hp = 0
         self.current_wave_zombies = []
 
@@ -1118,6 +1132,8 @@ class MainGame:
 
         self.wave_active = True
         self.wave_timer = 0
+        if self.wave_number == 1:
+            self.game.sound_manager.play_sound('zombies_are_coming')
 
     def draw_flag_meter(self, screen):
         frame_width = self.game.flag_meter_image.get_width()
@@ -1269,8 +1285,9 @@ class WelcomeScreen:
             click_here_text = self.game.small_font.render(self.game.lawn_strings.get("CLICK_TO_START","CLICK TO START!"), True, (255, 255, 255))
             screen.blit(click_here_text, (game.width // 2 - 100, game.height // 2 + 180))  # Position the coin count text next to the coinbank
 class Menu:
-    def __init__(self, game):
+    def __init__(self, game, menu_type='adventure'):
         self.game = game
+        self.menu_type = menu_type
         self.background = preloaded_images['challenge_background']
         self.window_image = preloaded_images['challenge_window']
         self.window_highlight = preloaded_images['challenge_window_highlight']
@@ -1289,7 +1306,7 @@ class Menu:
             self.thumbnails_list.append(self.thumbnails.subsurface(rect))
         # level buttons
         self.level_buttons = []
-        LEVEL_DATA = json.load(open('levels.json'))
+        LEVEL_DATA = self.game.levels[self.menu_type]
         # Generate grid positions: 8 columns, 6 rows, up to 48 levels
         cols = 8
         rows = 6
@@ -1334,7 +1351,7 @@ class Menu:
                 'completed': completed
             }
             self.level_buttons.append(button)
-        self.close_rect = pygame.Rect(20, 1030, self.close_button.get_width(), self.close_button.get_height())
+        self.close_rect = pygame.Rect(10, 1020, 178, 52)
         self.close_hovered = False
 
     def handle_events(self, events):
@@ -1349,11 +1366,21 @@ class Menu:
                     for button in self.level_buttons:
                         if button['hovered'] and button['unlocked']:
                             self.game.selected_level = button['level']
+                            self.game.current_menu_type = self.menu_type
                             self.game.load_background()
-                            self.game.seed_select = SeedSelect(self.game, self.game.levels[self.game.selected_level]['background'], self.game.levels[self.game.selected_level]['banned_plants'])
-                            self.game.state = 'seed_select'
-                            self.game.post_animation_delay = 1.0
-                            self.game.start_animation(-1080 * self.game.bg_scale_factor)
+                            level_data = self.game.levels[self.game.current_menu_type][self.game.selected_level]
+                            if 'preselected_plants' in level_data:
+                                self.game.seed_packets = [{'name': plant, 'icon': self.game.plant_icons.get(plant, self.game.seed_image)} for plant in level_data['preselected_plants']]
+                                self.game.main_game = MainGame(self.game, self.game.selected_level)
+                                self.game.pre_animation_delay = 1.0
+                                self.game.pending_state = 'game'
+                                self.game.target_offset_pending = -250 * self.game.bg_scale_factor
+                                self.game.start_animation(-1080 * self.game.bg_scale_factor)
+                            else:
+                                self.game.seed_select = SeedSelect(self.game, level_data['background'], level_data['banned_plants'])
+                                self.game.state = 'seed_select'
+                                self.game.post_animation_delay = 1.0
+                                self.game.start_animation(-1080 * self.game.bg_scale_factor)
                             break
                     if self.close_hovered:
                         self.game.state = 'menu'
@@ -1368,7 +1395,7 @@ class Menu:
             icon_x = button['rect'].x + (button['rect'].width - self.thumbnail_width) // 2
             icon_y = button['rect'].y + (button['rect'].height - self.thumbnail_height - 50) // 2
             screen.blit(button['icon'], (icon_x, icon_y))
-            level_text = self.game.font.render(button['level'], True, (0,0,0))
+            level_text = self.game.small_font.render(button['level'], True, (0,0,0))
             text_rect = level_text.get_rect(center=(button['rect'].centerx, button['rect'].centery + 40))
             screen.blit(level_text, text_rect)
             # Draw lock if not unlocked
@@ -1380,7 +1407,17 @@ class Menu:
                 trophy_rect = button['rect']
                 screen.blit(self.trophy_image, trophy_rect)
         close_img = self.close_highlight if self.close_hovered else self.close_button
-        screen.blit(close_img, self.close_rect)
+        screen.blit(pygame.transform.smoothscale(close_img,(178,52)), self.close_rect)
+        screen.blit(self.game.small_font.render(self.game.lawn_strings.get("CLOSE_BUTTON","Close"), True, (0,0,0)), (25, 1030))
+
+        if self.menu_type == "adventure":
+            screen.blit(self.game.large_font.render(self.game.lawn_strings.get("ADVENTURE","Adventure"), True, (230,230,230)), (800,60))
+        elif self.menu_type == "minigames":
+            screen.blit(self.game.large_font.render(self.game.lawn_strings.get("MINIGAMES","Minigames"), True, (230,230,230)), (830,60))
+        elif self.menu_type == "puzzles":
+            screen.blit(self.game.large_font.render(self.game.lawn_strings.get("PUZZLES","Puzzles"), True, (230,230,230)), (900,60))
+        else:
+            screen.blit(self.game.large_font.render(self.game.lawn_strings.get("SURVIVAL","Survival"), True, (230,230,230)), (800,60))
 
 class Game:
     def __init__(self):
@@ -1416,6 +1453,7 @@ class Game:
         # Load levels
         self.levels = json.load(open('levels.json'))
         self.selected_level = '1-1'
+        self.current_menu_type = 'adventure'
 
         # Load or initialize user progress
         try:
@@ -1459,6 +1497,7 @@ class Game:
         self.scaler = SimpleWindowScaler(BASE_WIDTH, BASE_HEIGHT, self.width, self.height)
 
         # Font for UI
+        self.large_font = pygame.font.Font('HOUSE_OF_TERROR.ttf', int(self.scaler.scale_y(72)))
         self.font = pygame.font.Font('HOUSE_OF_TERROR.ttf', int(self.scaler.scale_y(36)))
         self.small_font = pygame.font.Font('BrianneTod.ttf', int(self.scaler.scale_y(24)))
         self.pico_font = pygame.font.Font('pico12.ttf', int(self.scaler.scale_y(20)))
@@ -1475,12 +1514,12 @@ class Game:
 
         # Initialize states
         self.main_menu = MainMenu(self)
-        self.seed_select = SeedSelect(self, self.levels[self.selected_level]['background'], self.levels[self.selected_level]['banned_plants'])
+        self.seed_select = SeedSelect(self, self.levels[self.current_menu_type][self.selected_level]['background'], self.levels[self.current_menu_type][self.selected_level]['banned_plants'])
         self.main_game = MainGame(self, self.selected_level)
         self.pause_menu = None
         self.welcome_screen = WelcomeScreen(self)
         preload_ui()
-        self.menu = Menu(self)
+        self.menu = Menu(self, 'adventure')
         self.state = 'welcome'
         self.sound_manager.play_music('menu')
 
@@ -1512,7 +1551,7 @@ class Game:
 
 
     def load_background(self):
-        background_image = pygame.image.load("images/"+self.levels[self.selected_level]['background'])
+        background_image = pygame.image.load("images/"+self.levels[self.current_menu_type][self.selected_level]['background'])
         self.bg_scale_factor = self.height / background_image.get_height()
         scaled_bg_width = int(background_image.get_width() * self.bg_scale_factor)
         scaled_bg_height = self.height

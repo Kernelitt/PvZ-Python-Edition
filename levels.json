@@ -1,110 +1,182 @@
 {
-  "1-1": {
-    "name": "Day 1",
-    "background": "background1.png",
-    "waves": 5,
-    "start_sun": 400,
-    "zombies": ["BasicZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Sunflower"]
-  },
-  "1-2": {
-    "name": "Day 2",
-    "background": "background1.png",
-    "waves": 10,
-    "start_sun": 50,
-    "zombies": ["BasicZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Cherry Bomb"]
-  },
-  "1-3": {
-    "name": "Day 3",
-    "background": "background1.png",
-    "waves": 10,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Wall Nut"]
-  },
+  "adventure": {
+    "1-1": {
+      "name": "Day 1",
+      "background": "background1.png",
+      "waves": 5,
+      "start_sun": 400,
+      "zombies": ["BasicZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Sunflower"]
+    },
+    "1-2": {
+      "name": "Day 2",
+      "background": "background1.png",
+      "waves": 10,
+      "start_sun": 50,
+      "zombies": ["BasicZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Cherry Bomb"]
+    },
+    "1-3": {
+      "name": "Day 3",
+      "background": "background1.png",
+      "waves": 10,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Wall Nut"]
+    },
     "1-4": {
-    "name": "Day 4",
-    "background": "background1.png",
-    "waves": 20,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Potato Mine"]
-  },
+      "name": "Day 4",
+      "background": "background1.png",
+      "waves": 20,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Potato Mine"]
+    },
     "1-5": {
-    "name": "Day 5",
-    "background": "background1.png",
-    "waves": 10,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","PoleVaulterZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Snow Pea"]
-  },
+      "name": "Day 5",
+      "background": "background1.png",
+      "waves": 10,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","PoleVaulterZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Snow Pea"]
+    },
     "1-6": {
-    "name": "Day 6",
-    "background": "background1.png",
-    "waves": 20,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie","PoleVaulterZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Chomper"]
-  },
+      "name": "Day 6",
+      "background": "background1.png",
+      "waves": 20,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie","PoleVaulterZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Chomper"]
+    },
     "1-7": {
-    "name": "Day 7",
-    "background": "background1.png",
-    "waves": 20,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Repeater"]
-  },
+      "name": "Day 7",
+      "background": "background1.png",
+      "waves": 20,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Repeater"]
+    },
     "1-8": {
-    "name": "Day 8",
-    "background": "background1.png",
-    "waves": 30,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie","PoleVaulterZombie","BucketheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Puff Shroom"]
+      "name": "Day 8",
+      "background": "background1.png",
+      "waves": 30,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie","PoleVaulterZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Puff Shroom"]
+    },
+    "2-1": {
+      "name": "Night 1",
+      "background": "background2.png",
+      "waves": 10,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Sun Shroom"]
+    },
+    "2-2": {
+      "name": "Night 2",
+      "background": "background2.png",
+      "waves": 20,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Fume Shroom"]
+    },
+    "2-3": {
+      "name": "Night 3",
+      "background": "background2.png",
+      "waves": 10,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Grave Buster"] 
+    },
+    "2-4": {
+      "name": "Night 4",
+      "background": "background2.png",
+      "waves": 20,
+      "start_sun": 50,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": ["Hypno Shroom"]
+    }
   },
-  "2-1": {
-    "name": "Night 1",
-    "background": "background2.png",
-    "waves": 10,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Sun Shroom"]
+  "minigames": {
+    "Zombie Rush": {
+      "name": "Zombie Rush",
+      "background": "background2.png",
+      "waves": 10,
+      "start_sun": 10000,
+      "zombies": ["BasicZombie"],
+      "banned_plants": [],
+      "unlocked_plants": [],
+      "wave_options": {"Every": 1, "Points": 4}
+    },
+    "Plant Challenge": {
+      "name": "Plant Challenge",
+      "background": "background1.png",
+      "waves": 15,
+      "start_sun": 100,
+      "zombies": ["BasicZombie"],
+      "banned_plants": [],
+      "unlocked_plants": [],
+      "preselected_plants": ["Peashooter", "Sunflower", "Wall Nut"]
+    }
   },
-  "2-2": {
-    "name": "Night 2",
-    "background": "background2.png",
-    "waves": 20,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Fume Shroom"]
-  },
-  "2-3": {
-    "name": "Night 3",
-    "background": "background2.png",
-    "waves": 10,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Grave Buster"] 
-  },
-  "2-4": {
-    "name": "Night 4",
-    "background": "background2.png",
-    "waves": 20,
-    "start_sun": 50,
-    "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
-    "banned_plants": [],
-    "unlocked_plants": ["Hypno Shroom"]
+  "puzzles": {},
+  "survival": {
+    "Survival: Day": {
+      "name": "Survival: Day",
+      "background": "background1.png",
+      "waves": 100,
+      "start_sun": 75,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": []
+    },
+    "Survival: Night": {
+      "name": "Survival: Night",
+      "background": "background2.png",
+      "waves": 100,
+      "start_sun": 75,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": []
+    },
+    "Survival: Pool": {
+      "name": "Survival: Pool",
+      "background": "background3.png",
+      "waves": 100,
+      "start_sun": 75,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": []
+    },
+    "Survival: Fog": {
+      "name": "Survival: Fog",
+      "background": "background4.png",
+      "waves": 100,
+      "start_sun": 75,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": []
+    },
+    "Survival: Roof": {
+      "name": "Survival: Roof",
+      "background": "background5.png",
+      "waves": 100,
+      "start_sun": 75,
+      "zombies": ["BasicZombie","ConeheadZombie","BucketheadZombie"],
+      "banned_plants": [],
+      "unlocked_plants": []
+    }
   }
 }

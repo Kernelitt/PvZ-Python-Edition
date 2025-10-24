@@ -767,8 +767,13 @@ class Repeater(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in REPEATER_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'repeater_{action}']
+        for action_name, action_data in REPEATER_ANIMATIONS.items():
+            if isinstance(action_data, dict):  # Проверяем значение (словарь), не ключ
+                key = f'repeater_{action_name}'
+                if key in preloaded_images:
+                    self.animation_frames[action_name] = preloaded_images[key]
+                else:
+                    print(f"Warning: {key} not found in preloaded_images")
         self.rect = self.animation_frames['idle'][0].get_rect(center=(self.x, self.y))
         self.current_action = 'idle'
         self.idle_frame_index = 0
@@ -944,8 +949,13 @@ class PuffShroom(Plant):
 
         # Use preloaded animation frames
         self.animation_frames = {}
-        for action in PUFFSHROOM_ANIMATIONS:
-            self.animation_frames[action] = preloaded_images[f'puffshroom_{action}']
+        for action_name, action_data in PUFFSHROOM_ANIMATIONS.items():
+            if isinstance(action_data, dict):  # Проверяем значение (словарь), не ключ
+                key = f'puffshroom_{action_name}'
+                if key in preloaded_images:
+                    self.animation_frames[action_name] = preloaded_images[key]
+                else:
+                    print(f"Warning: {key} not found in preloaded_images")
         self.current_action = 'idle'
         self.idle_frame_index = 0
         self.idle_timer = 0.0
@@ -1038,7 +1048,9 @@ class PuffShroom(Plant):
             if self.current_action == 'idle':
                 frame = self.animation_frames['idle'][self.idle_frame_index]
             elif self.current_action == 'blink':
-                frame = self.animation_frames['blink'][self.blink_frame_index]
+                frame = self.animation_frames['idle'][self.idle_frame_index].copy()
+                blink_frame = self.animation_frames['blink'][self.blink_frame_index]
+                frame.blit(blink_frame, (0,0))
             elif self.current_action == 'shoot':
                 frame = self.animation_frames['shoot'][self.shoot_frame_index]
             else:
@@ -1051,8 +1063,8 @@ class PuffShroom(Plant):
             frame_alpha = pygame.surfarray.pixels_alpha(frame)
             tint_alpha[:] = frame_alpha
             frame.blit(tint, (0,0), special_flags=pygame.BLEND_RGBA_ADD)
-        scaled_frame = pygame.transform.scale(frame, (160, 160))
-        screen.blit(scaled_frame, (self.x, self.y))
+        scaled_frame = pygame.transform.scale(frame, (80, 80))
+        screen.blit(scaled_frame, (self.x+40, self.y+40))
         # Draw projectiles
         for projectile in self.projectiles:
             projectile.draw(screen)

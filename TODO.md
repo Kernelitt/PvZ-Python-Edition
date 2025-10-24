@@ -1,0 +1,5 @@
+- [x] Modify Menu.handle_events in main.py to check for 'preselected_plants' in level_data
+- [x] If 'preselected_plants' present, set seed_packets directly, initialize MainGame, and set pending state to 'game' with animations
+- [x] If not, proceed to seed_select as usual
+- [x] Test with Plant Challenge level to ensure preselected plants work
+- [x] Verify wave_options override works for levels like Zombie Rush
