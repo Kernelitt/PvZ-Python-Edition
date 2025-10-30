@@ -4,7 +4,6 @@ import json
 import threading
 import queue
 from simple_framework import  SimpleWindowScaler, SimplePygameButton, SimpleImageButton
-from simple_client_server import SimpleClient
 from os import getcwd
 print(getcwd())
 
@@ -588,12 +587,12 @@ class SeedSelect:
         self.start_game_button = None
 
         # Create buttons for seed selection
-        button_width = game.scaler.scale_x(75)
-        button_height = game.scaler.scale_y(105)
+        button_width = game.scaler.scale_x(90)
+        button_height = game.scaler.scale_y(120)
         x_start = game.scaler.scale_x(30)
         y_start = game.scaler.scale_y(220)
-        spacing_x = game.scaler.scale_x(90)
-        spacing_y = game.scaler.scale_y(115)
+        spacing_x = game.scaler.scale_x(97)
+        spacing_y = game.scaler.scale_y(125)
         cols = 8  # Number of columns for buttons
         for i, plant in enumerate(self.all_plants):
             row = i // cols
@@ -788,6 +787,19 @@ class PauseMenu:
             self.exit_to_menu,
             (128, 0, 0)
         )
+        # Language buttons
+        self.language_buttons = []
+        languages = [('EN', 'English'), ('RU', 'Русский')]
+        for i, (code, name) in enumerate(languages):
+            color = (0, 255, 0) if self.game.user['selected_language'] == code else (128, 128, 128)
+            button = SimplePygameButton(
+                (10, 10 + i * 60 if self.restart_button else self.center_y + 180 + i * 60),
+                (button_width, button_height),
+                [(name, (50, 15))],
+                lambda c=code: self.switch_language(c),
+                color
+            )
+            self.language_buttons.append(button)
         self.multiplayer_status = ""
 
     def resume_game(self):
@@ -802,6 +814,19 @@ class PauseMenu:
         self.game.state = 'menu'
         self.game.main_menu.playing_animation = True
 
+    def switch_language(self, language_code):
+        self.game.user['selected_language'] = language_code
+        self.game.reload_lawn_strings()
+        # Save to user.json
+        user_data = self.game.user.copy()
+        user_data['completed_levels'] = list(user_data['completed_levels'])
+        with open('user.json', 'w') as f:
+            json.dump(user_data, f)
+        # Update button colors
+        for i, button in enumerate(self.language_buttons):
+            code = 'EN' if i == 0 else 'RU'
+            button.color = (0, 255, 0) if self.game.user['selected_language'] == code else (128, 128, 128)
+
     def update(self, event):
         self.music_slider.update(event)
         self.sfx_slider.update(event)
@@ -809,6 +834,8 @@ class PauseMenu:
         if self.restart_button:
             self.restart_button.update(event)
         self.exit_button.update(event)
+        for button in self.language_buttons:
+            button.update(event)
 
     def draw(self):
         # Draw current state first
@@ -833,6 +860,8 @@ class PauseMenu:
         if self.restart_button:
             self.restart_button.draw(self.game.screen, self.game.font)
         self.exit_button.draw(self.game.screen, self.game.font)
+        for button in self.language_buttons:
+            button.draw(self.game.screen, self.game.font)
 
 class MainGame:
     def __init__(self, game, level_name):
@@ -1604,8 +1633,10 @@ class Game:
                     self.user['max_seeds'] = 6
                 if 'seed_upgrade_count' not in self.user:
                     self.user['seed_upgrade_count'] = 0
+                if 'selected_language' not in self.user:
+                    self.user['selected_language'] = 'RU'
         except FileNotFoundError:
-            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter'], 'coins': 0, 'max_seeds': 6, 'seed_upgrade_count': 0}
+            self.user = {'completed_levels': set(), 'unlocked_plants': ['Peashooter'], 'coins': 0, 'max_seeds': 6, 'seed_upgrade_count': 0, 'selected_language': 'RU'}
 
         # Load images
         self.seedbank_image = pygame.image.load('images/seedbank.png')
@@ -1614,7 +1645,7 @@ class Game:
         self.flag_meter_image = pygame.image.load('images/FlagMeter.png')
         seeds_image = pygame.image.load('images/seeds.png')
         # Extract the third seed image (0-indexed as 2)
-        self.seed_image = seeds_image.subsurface((2 * 50, 0, 50, 70))
+        self.seed_image = seeds_image.subsurface((2 * 100, 0, 100, 140))
 
         # Load shovel images
         self.shovel_bank_image = pygame.image.load('images/ShovelBank.png')
@@ -1641,7 +1672,7 @@ class Game:
         self.pico_font = pygame.font.Font('pico12.ttf', int(self.scaler.scale_y(20)))
 
         # Load LawnStrings.txt
-        self.lawn_strings = parse_lawnstrings('properties/languages/RU-russian.txt')
+        self.reload_lawn_strings()
 
         # Game state
         self.state = 'menu'
@@ -1688,6 +1719,25 @@ class Game:
         self.thread_running = True
 
         self.speedhack = 1
+
+    def reload_lawn_strings(self):
+        def parse_lawnstrings(filepath):
+            strings = {}
+            current_key = None
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('[') and line.endswith(']'):
+                        current_key = line[1:-1]
+                        strings[current_key] = ''
+                    elif current_key and line:
+                        if strings[current_key]:
+                            strings[current_key] += '\n' + line
+                        else:
+                            strings[current_key] = line
+            return strings
+        language_file = f'properties/languages/{self.user["selected_language"]}-{"english" if self.user["selected_language"] == "EN" else "russian"}.txt'
+        self.lawn_strings = parse_lawnstrings(language_file)
 
     def load_background(self):
         background_image = pygame.image.load("images/"+self.levels[self.current_menu_type][self.selected_level]['background'])
